@@ -1,4 +1,5 @@
 #include "HMUI/FlowCoordinator.hpp"
+#include "HMUI/ViewController.hpp"
 #include "System/Linq/Enumerable.hpp"
 #include "UnityEngine/Resources.hpp"
 #include "bsml/shared/BSML.hpp"
@@ -7,13 +8,13 @@
 #include "scotland2/shared/modloader.h"
 #include <bsml/shared/Helpers/creation.hpp>
 
-#include "UI/FlowCoordinators/SpotifySearchFlowCoordinator.hpp"
-#include "main.hpp"
 #include "BeatSaverUtils.hpp"
+#include "Configuration.hpp"
 #include "Log.hpp"
 #include "SpotifyClient.hpp"
+#include "UI/FlowCoordinators/SpotifySearchFlowCoordinator.hpp"
 #include "UI/ViewControllers/SettingsViewController.hpp"
-#include "Configuration.hpp"
+#include "main.hpp"
 
 using SpotifySearch::UI::FlowCoordinators::SpotifySearchFlowCoordinator;
 using namespace SpotifySearch;
@@ -25,7 +26,7 @@ MOD_EXTERN_FUNC void setup(CModInfo* info) noexcept {
 
     try {
         std::filesystem::rename("/sdcard/ModData/com.beatgames.beatsaber/logs2/spotify-search.log", "/sdcard/ModData/com.beatgames.beatsaber/logs2/spotify-search.1.log");
-    } catch (const std::filesystem::filesystem_error &error) {
+    } catch (const std::filesystem::filesystem_error& error) {
         SpotifySearch::Log.info("Failed to rotate log: {}", error.what());
     }
 
@@ -35,7 +36,7 @@ MOD_EXTERN_FUNC void setup(CModInfo* info) noexcept {
     SpotifySearch::Log.info("Version: {}", info->version);
 
     // Capture fatal logs from logcat to get crash stacks
-    std::thread([](){
+    std::thread([]() {
         SpotifySearch::Log.info("Logcat thread started");
 
         const char* command = "logcat *:F";
@@ -62,6 +63,33 @@ MOD_EXTERN_FUNC void setup(CModInfo* info) noexcept {
     if (!getConfig().config["filter"].HasMember("difficulty")) {
         getConfig().config["filter"].AddMember("difficulty", "Normal", getConfig().config.GetAllocator());
     }
+
+    if (!getConfig().config.HasMember("requirePassword")) {
+        // If the config doesn't contain this key, it means the user just updated to this version. By default, this
+        // should be enabled, but if the user is updating and already has an unencrypted token stored, let's just
+        // set this to false to keep it in sync. They can add a PIN in the settings if they want.
+        SpotifySearch::Log.warn("Config was missing key: requirePassword");
+        bool didSetValue = false;
+        if (!SpotifySearch::spotifyClient) {
+            SpotifySearch::spotifyClient = std::make_shared<spotify::Client>();
+            try {
+                SpotifySearch::spotifyClient->login(spotify::Client::getAuthTokenPath());
+                if (SpotifySearch::spotifyClient->isAuthenticated()) {
+                    SpotifySearch::Log.info("User is already authenticated. Setting requirePassword = false");
+                    getConfig().config.AddMember("requirePassword", false, getConfig().config.GetAllocator());
+                    didSetValue = true;
+                }
+            } catch (const std::exception& exception) {
+                SpotifySearch::Log.warn("Failed to authenticate: {}", exception.what());
+            }
+        }
+
+        if (!didSetValue) {
+            SpotifySearch::Log.info("Could not authenticate. Setting requirePassword = true");
+            getConfig().config.AddMember("requirePassword", true, getConfig().config.GetAllocator());
+        }
+    }
+
     getConfig().Write();
 }
 
@@ -80,8 +108,7 @@ MAKE_HOOK_MATCH(
         static_cast<void*>(self),
         self->get_gameObject()->get_name(),
         static_cast<void*>(flowCoordinator),
-        flowCoordinator->get_gameObject()->get_name()
-    );
+        flowCoordinator->get_gameObject()->get_name());
 
     // Call the original function
     onDismissFlowCoordinator(self, flowCoordinator, animationDirection, finishedCallback, true);
@@ -131,20 +158,14 @@ MOD_EXTERN_FUNC void late_load() noexcept {
     // Install hooks
     INSTALL_HOOK(SpotifySearch::Log, onDismissFlowCoordinator);
 
-    // Set up the data directory
-    const std::string dataDirectoryString = getDataDir(modInfo);
-    const std::filesystem::path dataDirectory {dataDirectoryString};
-    if (!std::filesystem::exists(dataDirectory)) {
-        std::filesystem::create_directory(dataDirectory);
-    }
-    SpotifySearch::dataDir_ = dataDirectory;
-
     // Initialize the Spotify client
-    SpotifySearch::spotifyClient = std::make_shared<spotify::Client>();
-    try {
-        SpotifySearch::spotifyClient->login(SpotifySearch::dataDir_ / "spotifyAuthToken.json");
-    } catch (const std::exception& exception) {
-        SpotifySearch::Log.warn("Failed to authenticate: {}", exception.what());
+    if (!SpotifySearch::spotifyClient) {
+        SpotifySearch::spotifyClient = std::make_shared<spotify::Client>();
+        try {
+            SpotifySearch::spotifyClient->login(spotify::Client::getAuthTokenPath());
+        } catch (const std::exception& exception) {
+            SpotifySearch::Log.warn("Failed to authenticate: {}", exception.what());
+        }
     }
 
     // Initialize BeatSaver utils

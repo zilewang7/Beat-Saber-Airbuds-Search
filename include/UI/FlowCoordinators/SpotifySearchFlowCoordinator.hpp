@@ -9,6 +9,7 @@
 #include "UI/ViewControllers/FilterOptionsViewController.hpp"
 #include "UI/ViewControllers/MainViewController.hpp"
 #include "UI/ViewControllers/SpotifyLoginViewController.hpp"
+#include "UI/ViewControllers/SpotifyAuthenticateViewController.hpp"
 
 DECLARE_CLASS_CODEGEN(SpotifySearch::UI::FlowCoordinators, SpotifySearchFlowCoordinator, HMUI::FlowCoordinator) {
 
@@ -20,4 +21,9 @@ DECLARE_CLASS_CODEGEN(SpotifySearch::UI::FlowCoordinators, SpotifySearchFlowCoor
     DECLARE_INSTANCE_FIELD(UnityW<ViewControllers::FilterOptionsViewController>, filterOptionsViewController_);
     DECLARE_INSTANCE_FIELD(UnityW<ViewControllers::DownloadHistoryViewController>, downloadHistoryViewController_);
     DECLARE_INSTANCE_FIELD(UnityW<ViewControllers::SpotifyLoginViewController>, spotifyLoginViewController_);
+    DECLARE_INSTANCE_FIELD(UnityW<ViewControllers::SpotifyAuthenticateViewController>, spotifyAuthenticateViewController_);
+
+    static void reset();
+
+    static void reopen();
 };

@@ -32,6 +32,18 @@
             <button id="clearCacheButton_" text="Clear Cache" on-click="onClearCacheButtonClicked"/>
         </horizontal>
 
+        <!-- Secure Authentication Token -->
+        <horizontal spacing="4">
+            <vertical horizontal-fit="Unconstrained">
+                <text text="Secure Authentication Token"/>
+                <horizontal spacing="1">
+                    <text text="Store the Spotify authentication token securely on this device by encrypting it with a PIN. You will be prompted to unlock it everytime you start the game. <color=#D32F2F>Disabling this would allow any other mod or app on your device to potentially access the authentication token!</color>" font-size="3" color="grey" rich-text="true"/>
+                    <horizontal flex-width="100"/>
+                </horizontal>
+            </vertical>
+            <checkbox text="" id="requirePinCheckbox_" on-change="onRequirePinCheckboxChanged" pref-width="45"/>
+        </horizontal>
+
         <vertical flex-height="100"/>
     </vertical>
 

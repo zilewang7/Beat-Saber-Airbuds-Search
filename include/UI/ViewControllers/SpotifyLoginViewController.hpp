@@ -4,13 +4,13 @@
 #include "bsml/shared/BSML/Components/CustomListTableData.hpp"
 #include "custom-types/shared/macros.hpp"
 #include "song-details/shared/SongDetails.hpp"
-#include "HMUI/ModalView.hpp"
 #include <HMUI/InputFieldView.hpp>
 
 #define CPPHTTPLIB_OPENSSL_SUPPORT
 #include <httplib.h>
 
 #include "SpotifyClient.hpp"
+#include "UI/ModalView.hpp"
 
 #if HOT_RELOAD
 #include "bsml/shared/BSML/ViewControllers/HotReloadViewController.hpp"
@@ -26,23 +26,31 @@ DECLARE_CLASS_CODEGEN_INTERFACES(SpotifySearch::UI::ViewControllers, SpotifyLogi
 
     DECLARE_INSTANCE_METHOD(void, PostParse);
 
-    // BSML
+    // Client ID
     DECLARE_INSTANCE_FIELD(UnityW<HMUI::InputFieldView>, clientIdTextField_);
     DECLARE_INSTANCE_FIELD(UnityW<UnityEngine::UI::Button>, clientIdPasteButton_);
     DECLARE_INSTANCE_METHOD(void, onPasteClientIdButtonClicked);
+
+    // Client secret
     DECLARE_INSTANCE_FIELD(UnityW<HMUI::InputFieldView>, clientSecretTextField_);
     DECLARE_INSTANCE_FIELD(UnityW<UnityEngine::UI::Button>, clientSecretPasteButton_);
     DECLARE_INSTANCE_METHOD(void, onPasteClientSecretButtonClicked);
+
+    // Redirect URI
     DECLARE_INSTANCE_FIELD(UnityW<TMPro::TextMeshProUGUI>, redirectUriTextField_);
+
+    // PIN
+    DECLARE_INSTANCE_FIELD(UnityW<UnityEngine::UI::VerticalLayoutGroup>, pinInputContainer_);
+    DECLARE_INSTANCE_FIELD(UnityW<HMUI::InputFieldView>, pinTextField_);
 
     DECLARE_INSTANCE_FIELD(UnityW<TMPro::TextMeshProUGUI>, waitingOnBrowserTextView_);
 
+    // Login button
     DECLARE_INSTANCE_FIELD(UnityW<UnityEngine::UI::Button>, loginButton_);
     DECLARE_INSTANCE_METHOD(void, onLoginButtonClicked);
 
-    DECLARE_INSTANCE_FIELD(UnityW<HMUI::ModalView>, errorMessageModal_);
-    DECLARE_INSTANCE_FIELD(UnityW<TMPro::TextMeshProUGUI>, errorMessageTextView_);
-    DECLARE_INSTANCE_METHOD(void, onDismissModalButtonClicked);
+    // Modal
+    DECLARE_INSTANCE_FIELD(UnityW<ModalView>, modalView_);
 
     private:
     std::unique_ptr<httplib::SSLServer> server_;
@@ -50,9 +58,7 @@ DECLARE_CLASS_CODEGEN_INTERFACES(SpotifySearch::UI::ViewControllers, SpotifyLogi
 
     std::string clientId_;
     std::string clientSecret_;
+    std::string pin_;
 
     void onAuthorizationCodeReceived(const std::string& authorizationCode);
-
-    void showErrorMessageModal(const std::string& message);
-    void hideErrorMessageModal();
 };

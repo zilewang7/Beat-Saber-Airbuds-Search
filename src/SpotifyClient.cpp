@@ -6,6 +6,7 @@
 #include "Utils.hpp"
 #include "main.hpp"
 #include "ThreadPool.hpp"
+#include "Encryption.hpp"
 
 using namespace spotify;
 
@@ -22,7 +23,7 @@ bool spotify::Client::isAuthenticated() {
     return !encodedClientIdAndClientSecret_.empty() && !accessToken_.empty() && !refreshToken_.empty();
 }
 
-void spotify::Client::saveAuthTokensToFile(const std::filesystem::path& path) {
+void spotify::Client::saveAuthTokensToFile(const std::filesystem::path& path, const std::string_view password) {
     // Create JSON document
     rapidjson::Document document;
     document.SetObject();
@@ -35,18 +36,30 @@ void spotify::Client::saveAuthTokensToFile(const std::filesystem::path& path) {
     document.AddMember("access_token", accessToken_, allocator);
     document.AddMember("refresh_token", refreshToken_, allocator);
 
-    // Convert JSON document to string
+    // Convert JSON document to bytes
     rapidjson::StringBuffer buffer;
     rapidjson::Writer<rapidjson::StringBuffer> writer(buffer);
     document.Accept(writer);
+    std::vector<uint8_t> data(buffer.GetString(), buffer.GetString() + buffer.GetSize());
+
+    // Encrypt the data if a password is provided
+    if (!password.empty()) {
+        data = SpotifySearch::encrypt(password, data);
+    }
 
     // Save to file
-    std::ofstream outputFileStream(path);
+    std::ofstream outputFileStream(path,  std::ios::binary);
     if (!outputFileStream) {
         throw std::runtime_error("Failed to open file for writing!");
     }
-    outputFileStream << buffer.GetString();
+    outputFileStream.write(reinterpret_cast<const char*>(data.data()), data.size());
     outputFileStream.close();
+}
+
+void spotify::Client::getCredentialsFromJson(const rapidjson::Value& json) {
+    encodedClientIdAndClientSecret_ = getString(json, "client_id_and_client_secret");
+    accessToken_ = getString(json, "access_token");
+    refreshToken_ = getString(json, "refresh_token");
 }
 
 void spotify::Client::loadAuthTokensFromFile(const std::filesystem::path& path) {
@@ -65,14 +78,25 @@ void spotify::Client::loadAuthTokensFromFile(const std::filesystem::path& path) 
         throw std::runtime_error("Failed to parse JSON!");
     }
 
-    // Encoded client ID and client secret
-    encodedClientIdAndClientSecret_ = getString(document, "client_id_and_client_secret");
-    accessToken_ = getString(document, "access_token");
-    refreshToken_ = getString(document, "refresh_token");
+    getCredentialsFromJson(document);
 }
 
 void spotify::Client::login(const std::filesystem::path& path) {
     loadAuthTokensFromFile(path);
+}
+
+void spotify::Client::loginWithPassword(const std::string_view password) {
+    std::ifstream stream(Client::getAuthTokenPath(), std::ios::binary);
+    const std::vector<uint8_t> data((std::istreambuf_iterator<char>(stream)), {});
+    const std::vector<uint8_t> decryptedData = SpotifySearch::decrypt(password, data);
+
+    // Parse the string into a Document
+    rapidjson::Document document;
+    if (document.Parse(reinterpret_cast<const char*>(decryptedData.data()), decryptedData.size()).HasParseError()) {
+        throw std::runtime_error("Failed to parse JSON!");
+    }
+
+    getCredentialsFromJson(document);
 }
 
 const rapidjson::Document& getJsonDocumentFromResponse(const WebUtils::JsonResponse& response) {
@@ -109,9 +133,6 @@ bool spotify::Client::login(const std::string& clientId, const std::string& clie
     accessToken_ = getString(document, "access_token");
     refreshToken_ = getString(document, "refresh_token");
 
-    // Save to file
-    saveAuthTokensToFile(SpotifySearch::dataDir_ / "spotifyAuthToken.json");
-
     return true;
 }
 
@@ -136,7 +157,7 @@ void spotify::Client::logout() {
     encodedClientIdAndClientSecret_ = "";
     accessToken_ = "";
     refreshToken_ = "";
-    std::filesystem::remove(SpotifySearch::dataDir_ / "spotifyAuthToken.json");
+    std::filesystem::remove(getAuthTokenPath());
 }
 
 User spotify::Client::getUser() {
@@ -270,13 +291,21 @@ Playlist Client::getPlaylistFromJson(const rapidjson::Value& json) {
     playlist.tracksUrl = json["tracks"]["href"].GetString();
     playlist.totalItemCount = json["tracks"]["total"].GetUint64();
 
-    const auto& imagesJson = json["images"].GetArray();
-    const std::vector<Image> images = getImagesFromJson(imagesJson);
+    if (json.HasMember("images")) {
+        if (json["images"].IsArray()) {
+            const auto& imagesJson = json["images"].GetArray();
+            const std::vector<Image> images = getImagesFromJson(imagesJson);
 
-    // Find smallest image
-    if (!images.empty()) {
-        const Image smallestImage = getSmallestImage(images);
-        playlist.imageUrl = smallestImage.url;
+            // Find smallest image
+            if (!images.empty()) {
+                const Image smallestImage = getSmallestImage(images);
+                playlist.imageUrl = smallestImage.url;
+            }
+        } else {
+            SpotifySearch::Log.warn("Playlist has images but wrong type: {}", static_cast<int>(json["images"].GetType()));
+        }
+    } else {
+        SpotifySearch::Log.warn("Playlist is missing images!");
     }
 
     return playlist;

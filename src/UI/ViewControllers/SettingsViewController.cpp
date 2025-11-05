@@ -1,8 +1,17 @@
 #include "HMUI/CurvedTextMeshPro.hpp"
+#include "HMUI/Touchable.hpp"
+#include "bsml/shared/BSML/Components/ExternalComponents.hpp"
+#include <UnityEngine/Mesh.hpp>
+#include <UnityEngine/Resources.hpp>
+#include <VRUIControls/VRGraphicRaycaster.hpp>
+#include <bsml/shared/BSML.hpp>
+#include <bsml/shared/BSML/Tags/ModalTag.hpp>
+#include <bsml/shared/Helpers/delegates.hpp>
+#include <bsml/shared/Helpers/getters.hpp>
 
 #include "Assets.hpp"
+#include "UI/FlowCoordinators/SpotifySearchFlowCoordinator.hpp"
 #include "UI/ViewControllers/SettingsViewController.hpp"
-#include "Utils.hpp"
 #include "main.hpp"
 
 DEFINE_TYPE(SpotifySearch::UI::ViewControllers, SettingsViewController);
@@ -10,52 +19,49 @@ DEFINE_TYPE(SpotifySearch::UI::ViewControllers, SettingsViewController);
 using namespace SpotifySearch::UI::ViewControllers;
 
 void SettingsViewController::DidActivate(const bool isFirstActivation, bool addedToHierarchy, bool screenSystemDisabling) {
-
     if (isFirstActivation) {
         BSML::parse_and_construct(Assets::SettingsViewController_bsml, this->get_transform(), this);
 
         isClearingCache_ = false;
+        isNewLoginRequired_ = false;
+        showModalOnChange_ = true;
 
 #if HOT_RELOAD
         fileWatcher->filePath = "/sdcard/SettingsViewController.bsml";
         fileWatcher->checkInterval = 1.0f;
 #endif
+        modalView_ = get_gameObject()->AddComponent<ModalView*>();
     } else {
-        PostParse();
+        refresh();
     }
 }
 
 void SettingsViewController::PostParse() {
-    // Get Spotify account
+    refresh();
+}
+
+void SettingsViewController::refresh() {
+    // Spotify account
     // profileImageView_->set_sprite(Utils::createSimpleSprite());
     refreshSpotifyAccountStatus();
 
-    // Get cache size
-    cacheSizeTextView_->set_text("(Calculating Usage...)");
-    std::thread([this]() {
-        const uintmax_t cacheSizeInBytes = getDirectorySizeInBytes(SpotifySearch::dataDir_ / "cache");
-        BSML::MainThreadScheduler::Schedule([this, cacheSizeInBytes]() {
-            cacheSizeTextView_->set_text(std::format("({} Used)", getHumanReadableSize(cacheSizeInBytes)));
+    // Image cache
+    refreshCacheSizeStatus();
 
-            if (isClearingCache_) {
-                clearCacheButton_->set_interactable(false);
-                clearCacheButton_->GetComponentInChildren<HMUI::CurvedTextMeshPro*>()->set_text("Clearing...");
-            } else {
-                clearCacheButton_->set_interactable(true);
-                clearCacheButton_->GetComponentInChildren<HMUI::CurvedTextMeshPro*>()->set_text("Clear Cache");
-            }
-        });
-    }).detach();
+    // Secure authentication token
+    showModalOnChange_ = false;
+    requirePinCheckbox_->set_Value(isSecureAuthenticationTokenRequired());
+    showModalOnChange_ = true;
 }
 
 void SettingsViewController::refreshSpotifyAccountStatus() {
 
-    const std::function<void()> onLoggedOut = [this](){
+    const std::function<void()> onLoggedOut = [this]() {
         profileTextView_->set_text("You are not logged in.");
         loginOrLogoutButton_->get_transform()->Find("Content/Text")->GetComponent<HMUI::CurvedTextMeshPro*>()->set_text("Log in");
     };
 
-    const std::function<void(const spotify::User&)> onLoggedIn = [this](const spotify::User& user){
+    const std::function<void(const spotify::User&)> onLoggedIn = [this](const spotify::User& user) {
         profileTextView_->set_text(std::format("Logged in as <color=#FF00FF>{}</color>.", user.displayName));
         loginOrLogoutButton_->get_transform()->Find("Content/Text")->GetComponent<HMUI::CurvedTextMeshPro*>()->set_text("Log out");
     };
@@ -83,16 +89,36 @@ void SettingsViewController::refreshSpotifyAccountStatus() {
     }).detach();
 }
 
-void SettingsViewController::refreshCacheSizeStatus(){
+void SettingsViewController::refreshCacheSizeStatus() {
+    cacheSizeTextView_->set_text("(Calculating Usage...)");
+    std::thread([this]() {
+        const uintmax_t cacheSizeInBytes = getDirectorySizeInBytes(SpotifySearch::getDataDirectory() / "cache");
+        BSML::MainThreadScheduler::Schedule([this, cacheSizeInBytes]() {
+            cacheSizeTextView_->set_text(std::format("({} Used)", getHumanReadableSize(cacheSizeInBytes)));
 
+            if (isClearingCache_) {
+                clearCacheButton_->set_interactable(false);
+                clearCacheButton_->GetComponentInChildren<HMUI::CurvedTextMeshPro*>()->set_text("Clearing...");
+            } else {
+                clearCacheButton_->set_interactable(true);
+                clearCacheButton_->GetComponentInChildren<HMUI::CurvedTextMeshPro*>()->set_text("Clear Cache");
+            }
+        });
+    }).detach();
 }
 
 void SettingsViewController::onLoginOrLogoutButtonClicked() {
-    // If we are logged in, just log out.
+    // Check if we are logged in
     if (SpotifySearch::spotifyClient->isAuthenticated()) {
-        SpotifySearch::spotifyClient->logout();
-        refreshSpotifyAccountStatus();
-        SpotifySearch::spotifySearchFlowCoordinator_.clear();
+        // Ask the user to confirm
+        modalView_->setMessage("Are you sure you want to log out?");
+        modalView_->setPrimaryButton(true, "Continue", [this]() {
+            SpotifySearch::spotifyClient->logout();
+            refreshSpotifyAccountStatus();
+            SpotifySearch::spotifySearchFlowCoordinator_.clear();
+        });
+        modalView_->setSecondaryButton(true, "Cancel", nullptr);
+        modalView_->show();
         return;
     }
 
@@ -107,7 +133,7 @@ void SettingsViewController::onClearCacheButtonClicked() {
     isClearingCache_ = true;
 
     std::thread([this]() {
-        std::filesystem::remove_all(SpotifySearch::dataDir_ / "cache");
+        std::filesystem::remove_all(SpotifySearch::getDataDirectory() / "cache");
         isClearingCache_ = false;
         BSML::MainThreadScheduler::Schedule([this]() {
             PostParse();
@@ -140,4 +166,40 @@ std::string SettingsViewController::getHumanReadableSize(const uintmax_t bytes) 
         ++i;
     }
     return std::format("{:.1f} {}", size, suffixes[i]);
+}
+
+void SettingsViewController::onRequirePinCheckboxChanged() {
+    if (!showModalOnChange_) {
+        return;
+    }
+
+    // Immediately reset the checkbox
+    BSML::MainThreadScheduler::ScheduleNextFrame([this]() {
+        showModalOnChange_ = false;
+        requirePinCheckbox_->set_Value(!requirePinCheckbox_->get_Value());
+        showModalOnChange_ = true;
+    });
+
+    modalView_->setMessage("Changing this option will require logging in to Spotify again. Are you sure you want to continue?");
+    modalView_->setPrimaryButton(true, "Continue", [this](){
+        // Update the checkbox to the intended state
+        showModalOnChange_ = false;
+        requirePinCheckbox_->set_Value(!requirePinCheckbox_->get_Value());
+        showModalOnChange_ = true;
+
+        // Dismiss modal
+        modalView_->hide(true);
+
+        // Update config
+        setIsSecureAuthenticationTokenRequired(requirePinCheckbox_->get_Value());
+
+        // Logout of Spotify
+        SpotifySearch::spotifyClient->logout();
+        refreshSpotifyAccountStatus();
+
+        // Reset the flow coordinator to trigger the login flow the next time we open it
+        SpotifySearch::UI::FlowCoordinators::SpotifySearchFlowCoordinator::reset();
+    });
+    modalView_->setSecondaryButton(true, "Cancel", nullptr);
+    modalView_->show();
 }

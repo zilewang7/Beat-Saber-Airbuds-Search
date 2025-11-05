@@ -42,7 +42,7 @@ UnityW<UnityEngine::Sprite> SpriteCache::get(const std::string_view key) {
     }
 
     // Check disk cache
-    const std::filesystem::path path = SpotifySearch::dataDir_ / "cache" / hashedKey;
+    const std::filesystem::path path = SpotifySearch::getDataDirectory() / "cache" / hashedKey;
     if (std::filesystem::exists(path)) {
         const UnityW<UnityEngine::Sprite> sprite = BSML::Lite::FileToSprite(path.string());
         if (sprite) {
@@ -66,7 +66,7 @@ void SpriteCache::add(const std::string_view key, UnityW<UnityEngine::Sprite> sp
 
 void SpriteCache::addToDiskCache(const std::string& key, const std::vector<uint8_t>& data) {
     const std::string hashedKey = getKeyHash(key);
-    const std::filesystem::path path = SpotifySearch::dataDir_ / "cache" / hashedKey;
+    const std::filesystem::path path = SpotifySearch::getDataDirectory() / "cache" / hashedKey;
     if (!std::filesystem::exists(path)) {
         std::filesystem::create_directories(path.parent_path());
         std::ofstream outputFileStream(path, std::ios::binary);

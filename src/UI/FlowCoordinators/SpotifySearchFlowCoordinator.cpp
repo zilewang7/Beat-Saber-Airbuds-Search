@@ -1,10 +1,11 @@
+#include "UI/FlowCoordinators/SpotifySearchFlowCoordinator.hpp"
+
 #include "GlobalNamespace/SongPreviewPlayer.hpp"
 #include "UnityEngine/ScriptableObject.hpp"
 #include "bsml/shared/Helpers/getters.hpp"
 #include <bsml/shared/Helpers/creation.hpp>
 
 #include "Log.hpp"
-#include "UI/FlowCoordinators/SpotifySearchFlowCoordinator.hpp"
 #include "main.hpp"
 
 DEFINE_TYPE(SpotifySearch::UI::FlowCoordinators, SpotifySearchFlowCoordinator);
@@ -12,6 +13,7 @@ DEFINE_TYPE(SpotifySearch::UI::FlowCoordinators, SpotifySearchFlowCoordinator);
 using namespace SpotifySearch::UI::FlowCoordinators;
 
 void SpotifySearchFlowCoordinator::DidActivate(bool isFirstActivation, bool addedToHierarchy, bool screenSystemEnabling) {
+    SpotifySearch::Log.info("activate");
     if (!isFirstActivation) {
         return;
     }
@@ -31,10 +33,18 @@ void SpotifySearchFlowCoordinator::DidActivate(bool isFirstActivation, bool adde
 
         ProvideInitialViewControllers(mainViewController_, filterOptionsViewController_, downloadHistoryViewController_, nullptr, nullptr);
     } else {
-        // Initialize view controllers
-        spotifyLoginViewController_ = BSML::Helpers::CreateViewController<ViewControllers::SpotifyLoginViewController*>();
+        // We aren't authenticated yet. That means this is either the first time loading the mod, or the auth token was encrypted.
+        if (std::filesystem::exists(spotify::Client::getAuthTokenPath())) {
+            // Initialize view controllers
+            spotifyAuthenticateViewController_ = BSML::Helpers::CreateViewController<ViewControllers::SpotifyAuthenticateViewController*>();
 
-        ProvideInitialViewControllers(spotifyLoginViewController_, nullptr, nullptr, nullptr, nullptr);
+            ProvideInitialViewControllers(spotifyAuthenticateViewController_, nullptr, nullptr, nullptr, nullptr);
+        } else {
+            // Initialize view controllers
+            spotifyLoginViewController_ = BSML::Helpers::CreateViewController<ViewControllers::SpotifyLoginViewController*>();
+
+            ProvideInitialViewControllers(spotifyLoginViewController_, nullptr, nullptr, nullptr, nullptr);
+        }
     }
 }
 
@@ -50,4 +60,21 @@ void SpotifySearchFlowCoordinator::BackButtonWasPressed(HMUI::ViewController* to
 
     // Dismiss this flow coordinator
     this->_parentFlowCoordinator->DismissFlowCoordinator(this, HMUI::ViewController::AnimationDirection::Horizontal, nullptr, false);
+}
+
+void SpotifySearchFlowCoordinator::reset() {
+    if (!spotifySearchFlowCoordinator_) {
+        return;
+    }
+    auto p = spotifySearchFlowCoordinator_->_parentFlowCoordinator;
+    SpotifySearch::Log.info("p = {}", static_cast<void*>(p));
+    if (p) {
+        p->DismissFlowCoordinator(spotifySearchFlowCoordinator_.ptr(), HMUI::ViewController::AnimationDirection::Horizontal, nullptr, true);
+    }
+    SpotifySearch::spotifySearchFlowCoordinator_ = nullptr;
+}
+
+void SpotifySearchFlowCoordinator::reopen() {
+    SpotifySearchFlowCoordinator::reset();
+    SpotifySearch::openSpotifySearchFlowCoordinator();
 }

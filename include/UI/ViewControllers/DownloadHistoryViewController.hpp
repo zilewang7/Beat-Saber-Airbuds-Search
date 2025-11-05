@@ -23,5 +23,4 @@ DECLARE_CLASS_CODEGEN_INTERFACES(SpotifySearch::UI::ViewControllers, DownloadHis
 
     // BSML
     DECLARE_INSTANCE_FIELD(UnityW<BSML::CustomListTableData>, customSongsList_);
-    DECLARE_INSTANCE_METHOD(void, onCustomSongSelected, UnityW<HMUI::TableView> table, int id);
 };

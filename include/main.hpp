@@ -25,8 +25,6 @@ inline bool returnToSpotifySearch = false;
 
 inline std::shared_ptr<spotify::Client> spotifyClient;
 
-inline std::filesystem::path dataDir_;
-
 inline SafePtrUnity<SpotifySearch::UI::FlowCoordinators::SpotifySearchFlowCoordinator> spotifySearchFlowCoordinator_;
 
 void openSpotifySearchFlowCoordinator();

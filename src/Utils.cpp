@@ -8,19 +8,21 @@
 #include "UnityEngine/Networking/UnityWebRequest.hpp"
 #include "UnityEngine/Networking/UnityWebRequestMultimedia.hpp"
 #include "UnityEngine/Resources.hpp"
+#include "UnityEngine/UI/Button.hpp"
 #include "bsml/shared/BSML-Lite/Creation/Image.hpp"
 #include "bsml/shared/BSML/SharedCoroutineStarter.hpp"
 #include "bsml/shared/Helpers/getters.hpp"
 #include "songcore/shared/SongCore.hpp"
 #include "web-utils/shared/WebUtils.hpp"
+#include <UnityEngine/CanvasGroup.hpp>
 
 #include "Assets.hpp"
+#include "BeatSaverUtils.hpp"
 #include "Log.hpp"
 #include "SpriteCache.hpp"
 #include "UI/FlowCoordinators/SpotifySearchFlowCoordinator.hpp"
 #include "Utils.hpp"
 #include "main.hpp"
-#include "BeatSaverUtils.hpp"
 
 using ::GlobalNamespace::LevelSelectionFlowCoordinator;
 using ::GlobalNamespace::SelectLevelCategoryViewController;
@@ -43,7 +45,7 @@ std::string getString(const rapidjson::Value& json, const std::string& key) {
     return value;
 }
 
-}
+}// namespace SpotifySearch::Utils::json
 
 std::string SpotifySearch::Utils::encodeBase64(const std::string& input) {
     static const char b64_table[] =
@@ -278,7 +280,7 @@ void removeRaycastFromButtonIcon(UnityW<UnityEngine::UI::Button> button) {
     component->set_raycastTarget(false);
 }
 
-}
+}// namespace SpotifySearch::Utils
 
 void SpotifySearch::Utils::goToLevelSelect(const std::string& songHash) {
     auto level = SongCore::API::Loading::GetLevelByHash(songHash);
@@ -313,7 +315,6 @@ void SpotifySearch::Utils::goToLevelSelect(const std::string& songHash) {
         SpotifySearch::Log.info("go to level search, set return = true");
         SpotifySearch::returnToSpotifySearch = true;
     });
-
 }
 
 #include "System/Type.hpp"
@@ -329,7 +330,15 @@ void dumpViewHierarchy(UnityW<UnityEngine::Transform> root, int depth) {
 
     // Print this GameObject
     auto go = root->get_gameObject();
-    SpotifySearch::Log.info("{}- {} ({})", indent.c_str(), go->get_name(), static_cast<void*>(go.ptr()));
+
+    std::string line = std::format("{}[{}] {} ({})", indent, depth, std::string(go->get_name()), static_cast<void*>(go.ptr()));
+    if (auto text = go->GetComponent<HMUI::CurvedTextMeshPro*>()) {
+        line.append(std::format(
+            " '{}'",
+            std::string(text->get_text()))
+        );
+    }
+    SpotifySearch::Log.info("{}", line);
 
     // Print attached components
     auto comps = go->GetComponents<UnityEngine::Component*>();
@@ -337,7 +346,24 @@ void dumpViewHierarchy(UnityW<UnityEngine::Transform> root, int depth) {
         auto comp = comps->_values[i];
         if (!comp) continue;
         auto type = comp->GetType();
-        SpotifySearch::Log.info("{}  [Component] {} ({})", indent.c_str(), type->get_FullName(), static_cast<void*>(comp));
+
+        std::string line = std::format(
+            "{}  ├─ {} ({})",
+            indent.c_str(),
+            std::string(type->get_FullName()),
+            static_cast<void*>(comp));
+
+        if (auto behavior = il2cpp_utils::try_cast<UnityEngine::Behaviour>(comp)) {
+            line.append(std::format(" (enabled = {})", (*behavior)->get_enabled()));
+        }
+        if (auto canvasGroup = il2cpp_utils::try_cast<UnityEngine::CanvasGroup>(comp)) {
+            line.append(std::format(
+                " (alpha = {})",
+                (*canvasGroup)->get_alpha()
+            ));
+        }
+
+        SpotifySearch::Log.info("{}", line);
     }
 
     // Recurse into children

@@ -8,6 +8,9 @@
   </component>
   <component name="CMakeWorkspace" PROJECT_DIR="$PROJECT_DIR$" />
   <component name="CidrRootsConfiguration">
+    <libraryRoots>
+      <file path="$PROJECT_DIR$/extern/includes" />
+    </libraryRoots>
     <excludeRoots>
       <file path="$PROJECT_DIR$/extern" />
       <file path="$PROJECT_DIR$/third-party" />

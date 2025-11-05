@@ -12,4 +12,10 @@ static modloader::ModInfo modInfo{MOD_ID, VERSION, 0};
 // log information from other files
 Configuration& getConfig();
 
+std::filesystem::path getDataDirectory();
+
+bool isSecureAuthenticationTokenRequired();
+
+void setIsSecureAuthenticationTokenRequired(bool value);
+
 }

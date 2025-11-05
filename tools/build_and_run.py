@@ -5,23 +5,44 @@ import shutil
 import signal
 import subprocess
 import sys
+import time
 from pathlib import Path
 from subprocess import CompletedProcess
 from typing import Any, Dict, List, Literal, Optional, get_args
 
 import adb
+from ansi import Color
+
+
+class ColorFormatter(logging.Formatter):
+
+    def format(self, record):
+        message = super().format(record)
+        match record.levelno:
+            case logging.ERROR:
+                return Color.RED(message)
+        return Color.MAGENTA(message)
+
+
+h = logging.StreamHandler(sys.stdout)
+h.setFormatter(ColorFormatter(
+    fmt='%(asctime)s [%(name)s] [%(levelname)s] %(message)s',
+    datefmt='%m/%d/%Y %H:%M:%S'
+))
 
 logging.basicConfig(
     format='%(asctime)s [%(name)s] [%(levelname)s] %(message)s',
     level=logging.INFO,
     datefmt='%m/%d/%Y %H:%M:%S',
     handlers=[
-        logging.StreamHandler(sys.stdout)
+        h
     ]
 )
 
+
 def get_logger(name: str):
     return logging.getLogger(name)
+
 
 logger = get_logger('Build Script')
 
@@ -32,6 +53,7 @@ is_app_running = False
 # Capture the original signal handler
 original_on_sig_int = signal.getsignal(signal.SIGINT)
 
+
 def on_sig_int(sig: int, frame):
     if is_app_running:
         stop_app(PACKAGE_NAME_BEAT_SABER)
@@ -41,7 +63,9 @@ def on_sig_int(sig: int, frame):
         if callable(original_on_sig_int):
             original_on_sig_int(sig, frame)
 
+
 signal.signal(signal.SIGINT, on_sig_int)
+
 
 def adb_shell(command: List[str]) -> CompletedProcess:
     process = subprocess.run([
@@ -50,6 +74,7 @@ def adb_shell(command: List[str]) -> CompletedProcess:
         *command
     ], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
     return process
+
 
 def stop_app(app_id: str):
     process = subprocess.run([
@@ -62,6 +87,7 @@ def stop_app(app_id: str):
     if process.returncode != 0:
         logger.error(f'Failed to stop app: {app_id}')
         logger.error(process.stdout.decode('utf-8'))
+
 
 def start_app(app_id: str):
     process = adb_shell([
@@ -77,19 +103,45 @@ def start_app(app_id: str):
 BuildType = Literal['debug', 'release']
 
 
-def build(*, project_dir: str | Path, output_dir: str | Path, build_type: BuildType = 'debug'):
-    project_dir = Path(project_dir).resolve().absolute()
-    output_dir = Path(output_dir).resolve().absolute()
+class Context:
+
+    def __init__(
+            self,
+            *,
+            project_root_dir: Path,
+            project_output_dir: Path,
+            build_type: BuildType
+    ):
+        self._project_root_dir = project_root_dir
+        self._project_output_dir = project_output_dir
+        self._build_type = build_type
+
+    @property
+    def project_root_dir(self) -> Path:
+        return self._project_root_dir
+
+    @property
+    def project_output_dir(self) -> Path:
+        return self._project_output_dir
+
+    @property
+    def build_type(self) -> BuildType:
+        return self._build_type
+
+
+def build(context: Context):
+    project_dir = context.project_root_dir.resolve().absolute()
+    output_dir = context.project_output_dir.resolve().absolute()
 
     # Determine the CMake build type
     cmake_build_type = None
-    match build_type:
+    match context.build_type:
         case 'debug':
-            cmake_build_type = 'RelWithDebInfo'
+            cmake_build_type = 'Debug'
         case 'release':
-            cmake_build_type = 'Release'
+            cmake_build_type = 'RelWithDebInfo'
         case _:
-            raise ValueError(f'Unknown build type: {build_type}')
+            raise ValueError(f'Unknown build type: {context.build_type}')
 
     # Configure CMake
     logger.info(f'Configuring CMake project...')
@@ -147,35 +199,30 @@ def create_qmod(
         raise RuntimeError(f'Command Failed! Exit Code = {process.returncode}')
 
 
-def deploy(
-        *,
-        project_dir: str | Path,
-):
-    project_dir = Path(project_dir).absolute()
-
+def deploy(context: Context):
     mod_json = None
     with open('../mod.template.json', 'r') as file:
         mod_json = json.load(file)
     mod_files = mod_json['modFiles']
     late_mod_files = mod_json['lateModFiles']
 
-    lib_prefix_path_release = project_dir / 'build'
-    lib_prefix_path_debug = lib_prefix_path_release / 'debug'
-    lib_prefix_path = lib_prefix_path_release
+    lib_src_dir = context.project_output_dir
+    if context.build_type == 'debug':
+        lib_src_dir = context.project_output_dir / 'debug'
 
     for mod_file in mod_files:
-        result = adb.push(
-            lib_prefix_path / mod_file,
-            '/sdcard/ModData/com.beatgames.beatsaber/Modloader/early_mods/'
-        )
+        src_path = lib_src_dir / mod_file
+        dst_path = '/sdcard/ModData/com.beatgames.beatsaber/Modloader/early_mods/'
+        logger.info(f'Deploying "{src_path}" -> "{dst_path}"')
+        result = adb.push(src_path, dst_path)
         if result.returncode != 0:
             raise RuntimeError(f'Command Failed! Exit Code = {result.returncode}')
 
     for mod_file in late_mod_files:
-        result = adb.push(
-            lib_prefix_path / mod_file,
-            '/sdcard/ModData/com.beatgames.beatsaber/Modloader/mods/'
-        )
+        src_path = lib_src_dir / mod_file
+        dst_path = '/sdcard/ModData/com.beatgames.beatsaber/Modloader/mods/'
+        logger.info(f'Deploying "{src_path}" -> "{dst_path}"')
+        result = adb.push(src_path, dst_path)
         if result.returncode != 0:
             raise RuntimeError(f'Command Failed! Exit Code = {result.returncode}')
 
@@ -208,6 +255,13 @@ def main():
     project_root_dir = (Path(__file__) / '..' / '..').resolve()
     build_output_dir = project_root_dir / 'build'
 
+    # Create context
+    context = Context(
+        project_root_dir=project_root_dir,
+        project_output_dir=build_output_dir,
+        build_type=build_type
+    )
+
     # Clean build output
     if clean:
         logger.info(f'Cleaning build output at "{build_output_dir.absolute()}"')
@@ -215,11 +269,9 @@ def main():
             shutil.rmtree(build_output_dir)
 
     # Build
-    build(
-        project_dir=project_root_dir,
-        output_dir=build_output_dir,
-        build_type=build_type
-    )
+    start_time = time.time()
+    build(context)
+    logger.info(f'Build finished in {int(time.time() - start_time)} seconds.')
 
     # Create .qmod file
     create_qmod(
@@ -232,9 +284,7 @@ def main():
         return
 
     # Push mod files
-    deploy(
-        project_dir=project_root_dir
-    )
+    deploy(context)
 
     # Launch game
     stop_app(PACKAGE_NAME_BEAT_SABER)
@@ -259,7 +309,7 @@ def main():
 
 if __name__ == '__main__':
     try:
-        main()  # todo: auto exit if target proc dies
+        main()
     except Exception as e:
         logger.error(str(e))
         exit(1)

@@ -10,7 +10,16 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS TRUE)
 set(SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/src)
 set(INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/include)
 
-add_compile_definitions(HOT_RELOAD=1)
+# Enable hot reload on debug builds
+if (NOT DEFINED HOT_RELOAD)
+    if (${CMAKE_BUILD_TYPE} MATCHES "^(Release|RelWithDebInfo|MinSizeRel)$")
+        set(HOT_RELOAD 0)
+    else ()
+        set(HOT_RELOAD 1)
+    endif ()
+endif ()
+add_compile_definitions(HOT_RELOAD=${HOT_RELOAD})
+message(STATUS "HOT_RELOAD = ${HOT_RELOAD}")
 
 add_compile_options(-frtti -fexceptions -fvisibility=hidden -fPIE -fPIC)
 
@@ -20,23 +29,23 @@ include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/qpm.cmake)
 
 include(${EXTERN_DIR}/includes/kaleb/shared/cmake/assets.cmake)
 
-if(${CMAKE_BUILD_TYPE} STREQUAL "RELEASE" OR ${CMAKE_BUILD_TYPE} STREQUAL "RelWithDebInfo" OR ${CMAKE_BUILD_TYPE} STREQUAL "MinSizeRel")
-        # Better optimizations
-        add_compile_options(-O3)
+if (${CMAKE_BUILD_TYPE} STREQUAL "RELEASE" OR ${CMAKE_BUILD_TYPE} STREQUAL "RelWithDebInfo" OR ${CMAKE_BUILD_TYPE} STREQUAL "MinSizeRel")
+    # Better optimizations
+    add_compile_options(-O2)
 
-        # LTO
-        set(CMAKE_INTERPROCEDURAL_OPTIMIZATION TRUE)
-        add_compile_options(-flto)
-endif()
+    # LTO
+    set(CMAKE_INTERPROCEDURAL_OPTIMIZATION TRUE)
+    add_compile_options(-flto)
+endif ()
 
-if(${CMAKE_BUILD_TYPE} STREQUAL "DEBUG" OR ${CMAKE_BUILD_TYPE} STREQUAL "RelWithDebInfo")
-        add_compile_options(-g)
-endif()
+if (${CMAKE_BUILD_TYPE} STREQUAL "DEBUG" OR ${CMAKE_BUILD_TYPE} STREQUAL "RelWithDebInfo")
+    add_compile_options(-g)
+endif ()
 
 # Targets
-if(QUEST)
-        include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/targets/quest.cmake)
-endif()
+if (QUEST)
+    include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/targets/quest.cmake)
+endif ()
 
 # Post build
 include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/strip.cmake)
@@ -44,7 +53,7 @@ include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/strip.cmake)
 # stop symbols leaking
 # TODO: Fix
 # add_link_options(-Wl, --exclude-libs, ALL)
-project( spotify-search
+project(spotify-search
         VERSION ${PACKAGE_VERSION})
 
 add_compile_definitions(MOD_ID="${CMAKE_PROJECT_NAME}")

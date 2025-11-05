@@ -1,5 +1,7 @@
 #pragma once
 
+#include <string>
+
 #include "web-utils/shared/WebUtils.hpp"
 
 #include "Log.hpp"
@@ -7,7 +9,7 @@
 #include "Spotify/User.hpp"
 #include "Spotify/Playlist.hpp"
 #include "Spotify/Image.hpp"
-#include <string>
+#include "Configuration.hpp"
 
 namespace spotify {
 
@@ -25,12 +27,19 @@ class Client {
 
     bool login(const std::string& clientId, const std::string& clientSecret, const std::string& redirectUri, const std::string& authorizationCode);
     void login(const std::filesystem::path& path);
+    void loginWithPassword(std::string_view password);
 
     void logout();
 
     User getUser();
 
     static constexpr size_t MAX_LIMIT = 50;
+
+    static std::filesystem::path getAuthTokenPath() {
+        return SpotifySearch::getDataDirectory() / "spotifyAuthToken.json";
+    }
+
+    void saveAuthTokensToFile(const std::filesystem::path& path, std::string_view password = "");
 
     private:
     // Base URL for API requests
@@ -43,7 +52,7 @@ class Client {
 
     void refreshAccessToken2();
 
-    void getAuth();
+    void getCredentialsFromJson(const rapidjson::Value& json);
 
     Track getTrackFromJson(const rapidjson::Value& json);
     Playlist getPlaylistFromJson(const rapidjson::Value& json);
@@ -52,7 +61,6 @@ class Client {
 
     Image getSmallestImage(const std::vector<Image>& images);
 
-    void saveAuthTokensToFile(const std::filesystem::path& path);
     void loadAuthTokensFromFile(const std::filesystem::path& path);
 };
 

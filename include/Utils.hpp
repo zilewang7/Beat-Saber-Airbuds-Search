@@ -43,6 +43,17 @@ SongDetailsCache::MapDifficulty getMapDifficultyFromString(const std::string& te
 
 void removeRaycastFromButtonIcon(UnityW<UnityEngine::UI::Button> button);
 
+template<typename T>
+T* findParentWithComponent(UnityEngine::Transform* start) {
+    auto current = start;
+    while (current) {
+        auto comp = current->GetComponent<T*>();
+        if (comp) return comp;
+        current = current->get_parent();
+    }
+    return nullptr;
+}
+
 namespace json {
 
 std::string getString(const rapidjson::Value& json, const std::string& key);

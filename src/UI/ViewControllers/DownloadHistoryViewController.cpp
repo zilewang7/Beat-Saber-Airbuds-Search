@@ -14,7 +14,6 @@ using namespace SpotifySearch::UI;
 using namespace SpotifySearch::UI::ViewControllers;
 
 void DownloadHistoryViewController::DidActivate(const bool isFirstActivation, const bool addedToHierarchy, const bool screenSystemDisabling) {
-    SpotifySearch::Log.info("DownloadHistoryViewController::DidActivate {} {} {}", isFirstActivation, addedToHierarchy, screenSystemDisabling);
     if (isFirstActivation) {
         BSML::parse_and_construct(Assets::DownloadHistoryViewController_bsml, this->get_transform(), this);
 
@@ -32,8 +31,4 @@ void DownloadHistoryViewController::PostParse() {
         downloadHistoryTableViewDataSource = gameObject->AddComponent<DownloadHistoryTableViewDataSource*>();
     }
     customSongsList_->tableView->SetDataSource(reinterpret_cast<HMUI::TableView::IDataSource*>(downloadHistoryTableViewDataSource), true);
-}
-
-void DownloadHistoryViewController::onCustomSongSelected(UnityW<HMUI::TableView> table, int id) {
-
 }
