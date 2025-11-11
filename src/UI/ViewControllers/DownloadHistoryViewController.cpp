@@ -4,7 +4,6 @@
 #include "bsml/shared/BSML.hpp"
 
 #include "Assets.hpp"
-#include "Log.hpp"
 #include "UI/TableViewDataSources/DownloadHistoryTableViewDataSource.hpp"
 #include "UI/ViewControllers/DownloadHistoryViewController.hpp"
 

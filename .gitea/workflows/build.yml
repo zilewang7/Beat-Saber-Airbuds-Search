@@ -33,8 +33,7 @@ jobs:
         run: |
           qpm restore
           cd tools
-          python3 build_and_run.py --clean --build-only
-          python3 build_and_run.py --build-only --build-type release
+          python3 build_and_run.py --clean --build-only --build-type release
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v3
@@ -43,5 +42,5 @@ jobs:
           compression-level: 0
           path: |
             build/libspotify-search.so
-            build/debug/libspotify-search.so
+            build/debug/libspotify-search.so.debug
             build/spotify-search-v*.qmod

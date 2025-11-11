@@ -54,11 +54,7 @@ T* findParentWithComponent(UnityEngine::Transform* start) {
     return nullptr;
 }
 
-namespace json {
-
-std::string getString(const rapidjson::Value& json, const std::string& key);
-
-}
+void setIconScale(UnityW<UnityEngine::UI::Button> button, float scale);
 
 }// namespace SpotifySearch::Utils
 

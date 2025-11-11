@@ -207,8 +207,6 @@ def deploy(context: Context):
     late_mod_files = mod_json['lateModFiles']
 
     lib_src_dir = context.project_output_dir
-    if context.build_type == 'debug':
-        lib_src_dir = context.project_output_dir / 'debug'
 
     for mod_file in mod_files:
         src_path = lib_src_dir / mod_file

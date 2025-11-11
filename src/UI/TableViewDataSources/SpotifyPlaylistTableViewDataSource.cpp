@@ -12,9 +12,6 @@ DEFINE_TYPE(SpotifySearch::UI, SpotifyPlaylistTableViewDataSource);
 using namespace SpotifySearch::UI;
 
 HMUI::TableCell* SpotifyPlaylistTableViewDataSource::CellForIdx(HMUI::TableView* tableView, int idx) {
-    if (onLoadItemCallback_) {
-        onLoadItemCallback_(idx);
-    }
     auto tcd = tableView->DequeueReusableCellForIdentifier(SpotifyPlaylistTableViewCell::CELL_REUSE_ID);
     SpotifyPlaylistTableViewCell* spotifyCell;
     if (!tcd) {
@@ -24,8 +21,6 @@ HMUI::TableCell* SpotifyPlaylistTableViewDataSource::CellForIdx(HMUI::TableView*
 
         spotifyCell->set_reuseIdentifier(SpotifyPlaylistTableViewCell::CELL_REUSE_ID);
         BSML::parse_and_construct(Assets::SpotifyPlaylistTableViewCell_bsml, spotifyCell->get_transform(), spotifyCell);
-
-        // Weird hack cause HMUI touchable is not there for some reason, thanks RedBrumbler
         spotifyCell->get_gameObject()->AddComponent<HMUI::Touchable*>();
     } else {
         spotifyCell = tcd->GetComponent<SpotifyPlaylistTableViewCell*>();
@@ -43,8 +38,4 @@ int SpotifyPlaylistTableViewDataSource::NumberOfCells() {
 
 float SpotifyPlaylistTableViewDataSource::CellSize() {
     return 8.0f;
-}
-
-void SpotifyPlaylistTableViewDataSource::setOnLoadItemCallback(std::function<void(size_t index)> callback) {
-    onLoadItemCallback_ = callback;
 }

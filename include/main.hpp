@@ -16,7 +16,7 @@
 
 #include "_config.hpp"
 
-#include "SpotifyClient.hpp"
+#include "Spotify/SpotifyClient.hpp"
 #include "UI/FlowCoordinators/SpotifySearchFlowCoordinator.hpp"
 
 namespace SpotifySearch {

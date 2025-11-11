@@ -253,8 +253,16 @@ void SpotifyLoginViewController::onLoginButtonClicked() {
             return;
         }
 
+        // Set error handler
+        server_->set_error_handler([](const httplib::Request& request, httplib::Response& response) {
+            SpotifySearch::Log.error("HTTPS Error: request = {}", request.path);
+
+            response.status = 404;
+            response.set_content("An error occurred!", "text/plain");
+        });
+
         server_->Get("/", [this](const httplib::Request& request, httplib::Response& response) {
-            SpotifySearch::Log.debug("Received request: {} params: {}", request.path, request.params.size());
+            SpotifySearch::Log.info("Received request: {} params: {}", request.path, request.params.size());
 
             // Check we got the authorization code
             std::string authorizationCode;
@@ -279,7 +287,11 @@ void SpotifyLoginViewController::onLoginButtonClicked() {
         // Start listening for requests
         SpotifySearch::Log.info("HTTPS server is listening on {}:{}", REDIRECT_URI_HOST, REDIRECT_URI_PORT);
         promise.set_value();
-        server_->listen(REDIRECT_URI_HOST, REDIRECT_URI_PORT);
+        if (!server_->listen(REDIRECT_URI_HOST, REDIRECT_URI_PORT)) {
+            SpotifySearch::Log.error("Failed to start server!");
+            isServerStarted_ = false;
+            return;
+        }
         SpotifySearch::Log.info("HTTPS server stopped");
         isServerStarted_ = false;
     }).detach();
@@ -300,6 +312,16 @@ void SpotifyLoginViewController::onLoginButtonClicked() {
     try {
         static auto UnityEngine_Application_OpenURL = il2cpp_utils::resolve_icall<void, StringW>("UnityEngine.Application::OpenURL");
         UnityEngine_Application_OpenURL(url);
+    } catch (const std::exception& exception) {
+        SpotifySearch::Log.error("Failed to open web browser: {}", exception.what());
+    }
+}
+
+void SpotifyLoginViewController::onIntroductionTextClicked() {
+    // Open web browser
+    try {
+        static auto UnityEngine_Application_OpenURL = il2cpp_utils::resolve_icall<void, StringW>("UnityEngine.Application::OpenURL");
+        UnityEngine_Application_OpenURL("https://google.com");
     } catch (const std::exception& exception) {
         SpotifySearch::Log.error("Failed to open web browser: {}", exception.what());
     }

@@ -16,6 +16,12 @@ struct Track {
     auto operator<=>(const Track&) const = default;
 };
 
+struct PlaylistTrack : public Track {
+    std::string dateAdded;
+
+    std::chrono::milliseconds dateAdded_;
+};
+
 std::string to_string(const Track& track);
 
 }// namespace spotify

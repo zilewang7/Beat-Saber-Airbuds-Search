@@ -9,7 +9,7 @@
 #define CPPHTTPLIB_OPENSSL_SUPPORT
 #include <httplib.h>
 
-#include "SpotifyClient.hpp"
+#include "Spotify/SpotifyClient.hpp"
 #include "UI/ModalView.hpp"
 
 #if HOT_RELOAD
@@ -25,6 +25,9 @@ DECLARE_CLASS_CODEGEN_INTERFACES(SpotifySearch::UI::ViewControllers, SpotifyLogi
     DECLARE_OVERRIDE_METHOD_MATCH(void, DidActivate, &HMUI::ViewController::DidActivate, bool isFirstActivation, bool addedToHierarchy, bool screenSystemDisabling);
 
     DECLARE_INSTANCE_METHOD(void, PostParse);
+
+    // Description
+    DECLARE_INSTANCE_METHOD(void, onIntroductionTextClicked);
 
     // Client ID
     DECLARE_INSTANCE_FIELD(UnityW<HMUI::InputFieldView>, clientIdTextField_);

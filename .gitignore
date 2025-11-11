@@ -11,6 +11,7 @@ venv/
 /include/Assets.hpp
 mod.json
 qpm.shared.json
+qpm_defines.cmake
 
 # Crash dump
 crash.txt

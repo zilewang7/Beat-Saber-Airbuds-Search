@@ -16,7 +16,7 @@ function(_setup_linux_strip_project)
             COMMENT "Make directory for debug symbols"
         )
         add_custom_command(TARGET ${COMPILE_ID} POST_BUILD
-            COMMAND ${CMAKE_COMMAND} -E rename lib${COMPILE_ID}.so debug/lib${COMPILE_ID}.so
+            COMMAND ${CMAKE_COMMAND} -E rename lib${COMPILE_ID}.so debug/lib${COMPILE_ID}.so.debug
             COMMENT "Rename the lib to debug_ since it has debug symbols"
         )
 

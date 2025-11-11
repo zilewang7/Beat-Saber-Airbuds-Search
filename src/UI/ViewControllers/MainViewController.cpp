@@ -14,8 +14,8 @@
 #include "song-details/shared/SongDetails.hpp"
 #include "songcore/shared/SongCore.hpp"
 #include "web-utils/shared/WebUtils.hpp"
-#include <bsml/shared/BSML/Components/ButtonIconImage.hpp>
 #include <bsml/shared/BSML/Animations/AnimationStateUpdater.hpp>
+#include <bsml/shared/BSML/Components/ButtonIconImage.hpp>
 
 #include "Assets.hpp"
 #include "CustomSongFilter.hpp"
@@ -50,7 +50,7 @@ static std::vector<std::string> getWords(const std::string& text) {
 
     // Split into words
     for (auto&& word : std::views::split(cleanText, ' ')) {
-        if (!word.empty()) {// Ignore empty parts from multiple spaces
+        if (!word.empty()) { // Ignore empty parts from multiple spaces
             words.emplace_back(word.begin(), word.end());
         }
     }
@@ -114,7 +114,7 @@ SongScoreFunction DEFAULT_SONG_SCORE_FUNCTION = [](const spotify::Track& track, 
     return score;
 };
 
-}// namespace SpotifySearch::Filter
+} // namespace SpotifySearch::Filter
 
 void MainViewController::DidActivate(const bool isFirstActivation, const bool addedToHierarchy, const bool screenSystemDisabling) {
     if (isFirstActivation) {
@@ -149,71 +149,75 @@ void MainViewController::reloadSpotifyTrackListView() {
     resetListError();
     spotifyTrackListView_->get_gameObject()->set_active(true);
     randomTrackButton_->get_gameObject()->set_active(false);
-    const auto loadMoreSpotifyTracks = [this, spotifyTrackTableViewDataSource](const size_t index) {
-        if (isLoadingMoreSpotifyTracks_ || allTracksLoaded_) {
+    const std::string playlistId = selectedPlaylist_->id;
+    isLoadingMoreSpotifyTracks_ = true;
+    std::thread([this, spotifyTrackTableViewDataSource, playlistId]() {
+        // Make sure the Spotify client is still valid
+        if (!SpotifySearch::spotifyClient) {
+            isLoadingMoreSpotifyTracks_ = false;
             return;
         }
-        isLoadingMoreSpotifyTracks_ = true;
-        std::thread([this, spotifyTrackTableViewDataSource]() {
-            // Make sure the Spotify client is still valid
-            if (!SpotifySearch::spotifyClient) {
-                return;
+
+        // Load tracks
+        std::vector<spotify::PlaylistTrack> tracks;
+        try {
+            if (selectedPlaylist_->id == "liked-songs") {
+                tracks = spotifyClient->getLikedSongs();
+            } else {
+                tracks = spotifyClient->getPlaylistTracks(selectedPlaylist_->id);
             }
-
-            // Load more tracks
-            const size_t offset = spotifyTrackTableViewDataSource->tracks_.size();
-            std::vector<spotify::Track> tracks;
-            try {
-                if (selectedPlaylist_->id == "liked-songs") {
-                    tracks = spotifyClient->getLikedSongs(offset, 300);
-                } else {
-                    tracks = spotifyClient->getPlaylistTracks(selectedPlaylist_->id, offset, 50);
-                }
-            } catch (const std::exception& exception) {
-                const std::string message = exception.what();
-                BSML::MainThreadScheduler::Schedule([this, message]() {
-                    onTrackLoadError(message);
-                });
-                isLoadingMoreSpotifyTracks_ = false;
-                return;
-            }
-            if (tracks.size() < 50) {
-                allTracksLoaded_ = true;
-            }
-            BSML::MainThreadScheduler::Schedule([this, spotifyTrackTableViewDataSource, tracks, offset]() {
-                spotifyTrackTableViewDataSource->tracks_.insert(spotifyTrackTableViewDataSource->tracks_.end(), tracks.begin(), tracks.end());
-                if (spotifyTrackTableViewDataSource->tracks_.empty()) {
-                    spotifyListViewStatusContainer_->get_gameObject()->set_active(true);
-
-                    //spotifyTrackListView_->get_gameObject()->set_active(false);
-                    spotifyTrackListStatusTextView_->set_text("No tracks");
-                }
-                Utils::reloadDataKeepingPosition(spotifyTrackListView_->tableView);
-
-                isLoadingMoreSpotifyTracks_ = false;
-                spotifyTrackListLoadingIndicatorContainer_->get_gameObject()->set_active(false);
-
-                if (!spotifyTrackTableViewDataSource->tracks_.empty()) {
-                    randomTrackButton_->get_gameObject()->set_active(true);
-                }
-
-                // Automatically select the first track
-                if (offset == 0 && !spotifyTrackTableViewDataSource->tracks_.empty()) {
-                    spotifyTrackListView_->tableView->SelectCellWithIdx(0, true);
-                    onTrackSelected(spotifyTrackListView_->tableView, 0);
-                }
+        } catch (const std::exception& exception) {
+            const std::string message = exception.what();
+            SpotifySearch::Log.error("Failed loading tracks: {}", message);
+            BSML::MainThreadScheduler::Schedule([this, message]() {
+                onTrackLoadError(message);
             });
-        }).detach();
-    };
-    spotifyTrackTableViewDataSource->setOnLoadItemCallback([spotifyTrackTableViewDataSource, loadMoreSpotifyTracks](const size_t index) {
-        if (index > spotifyTrackTableViewDataSource->tracks_.size() - 10) {
-            loadMoreSpotifyTracks(index);
+            isLoadingMoreSpotifyTracks_ = false;
+            return;
         }
-    });
-    loadMoreSpotifyTracks(spotifyTrackTableViewDataSource->NumberOfCells());
+        BSML::MainThreadScheduler::Schedule([this, spotifyTrackTableViewDataSource, tracks, playlistId]() {
+            // Check if we still have a playlist selected
+            if (!selectedPlaylist_) {
+                SpotifySearch::Log.warn("Ignoring track list update because the selected playlist is null!");
+                isLoadingMoreSpotifyTracks_ = false;
+                return;
+            }
+
+            // Check if we still have the same playlist selected
+            if (selectedPlaylist_->id != playlistId) {
+                SpotifySearch::Log.warn("Ignoring track list update because the selected playlist has changed! (requested = {} / current = {})", playlistId, selectedPlaylist_->id);
+                isLoadingMoreSpotifyTracks_ = false;
+                return;
+            }
+
+            spotifyTrackTableViewDataSource->tracks_ = tracks;
+            if (spotifyTrackTableViewDataSource->tracks_.empty()) {
+                spotifyListViewStatusContainer_->get_gameObject()->set_active(true);
+
+                //spotifyTrackListView_->get_gameObject()->set_active(false);
+                spotifyTrackListStatusTextView_->set_text("No tracks");
+            }
+            Utils::reloadDataKeepingPosition(spotifyTrackListView_->tableView);
+
+            isLoadingMoreSpotifyTracks_ = false;
+            spotifyTrackListLoadingIndicatorContainer_->get_gameObject()->set_active(false);
+
+            if (!spotifyTrackTableViewDataSource->tracks_.empty()) {
+                randomTrackButton_->get_gameObject()->set_active(true);
+            }
+
+            // Automatically select the first track
+            if (!spotifyTrackTableViewDataSource->tracks_.empty()) {
+                spotifyTrackListView_->tableView->SelectCellWithIdx(0, true);
+            }
+        });
+    }).detach();
 }
 
 void MainViewController::PostParse() {
+
+    Utils::setIconScale(playlistsMenuButton_, 1.5f);
+
     randomTrackButton_->get_gameObject()->set_active(false);
 
     if (isLoadingMoreSpotifyPlaylists_ || isLoadingMoreSpotifyTracks_) {
@@ -352,8 +356,6 @@ void MainViewController::ctor() {
     isDownloadThreadRunning_ = false;
     isLoadingMoreSpotifyTracks_ = false;
     isLoadingMoreSpotifyPlaylists_ = false;
-    allTracksLoaded_ = false;
-    allPlaylistsLoaded_ = false;
     customSongFilter_ = CustomSongFilter();
     isShowingAllTracksByArtist_ = false;
     isShowingDownloadedMaps_ = true;
@@ -407,7 +409,7 @@ void MainViewController::onSpotifyTrackLoadingError(const std::string& message) 
 
     // Show the error message
     spotifyListViewErrorContainer_->get_gameObject()->set_active(true);
-    spotifyTrackListStatusTextView_->set_text(message);
+    spotifyTrackListErrorMessageTextView_->set_text(message);
 }
 
 void MainViewController::reloadSpotifyPlaylistListView() {
@@ -415,54 +417,40 @@ void MainViewController::reloadSpotifyPlaylistListView() {
 
     showSpotifyTrackLoadingIndicator();
     auto* spotifyPlaylistTableViewDataSource = gameObject->GetComponent<SpotifyPlaylistTableViewDataSource*>();
-    const auto loadSpotifyPlaylists = [this, spotifyPlaylistTableViewDataSource](const size_t index) {
-        if (isLoadingMoreSpotifyPlaylists_ || allPlaylistsLoaded_) {
-            showSpotifyPlaylistListView();
+    isLoadingMoreSpotifyPlaylists_ = true;
+    std::thread([this, spotifyPlaylistTableViewDataSource]() {
+        // Make sure the Spotify client is still valid
+        if (!SpotifySearch::spotifyClient) {
+            isLoadingMoreSpotifyPlaylists_ = false;
+            // TODO: update vis
             return;
         }
-        isLoadingMoreSpotifyPlaylists_ = true;
-        std::thread([this, spotifyPlaylistTableViewDataSource]() {
-            // Make sure the Spotify client is still valid
-            if (!SpotifySearch::spotifyClient) {
-                isLoadingMoreSpotifyPlaylists_ = false;
-                // TODO: update vis
-                return;
-            }
 
-            // Load playlists
-            // TODO: Support paging
-            std::vector<spotify::Playlist> playlists;
-            try {
-                playlists = spotifyClient->getPlaylists();
-                playlists.insert(playlists.begin(), spotifyClient->getLikedSongsPlaylist());
-            } catch (const std::exception& exception) {
-                BSML::MainThreadScheduler::Schedule([this]() {
-                    onSpotifyTrackLoadingError("Loading Error");
-                });
-                isLoadingMoreSpotifyPlaylists_ = false;
-                return;
-            }
-            if (playlists.size() < 50) {
-                allPlaylistsLoaded_ = true;
-            }
-            BSML::MainThreadScheduler::Schedule([this, spotifyPlaylistTableViewDataSource, playlists]() {
-                showSpotifyPlaylistListView();
-                spotifyPlaylistTableViewDataSource->playlists_.insert(spotifyPlaylistTableViewDataSource->playlists_.end(), playlists.begin(), playlists.end());
-                Utils::reloadDataKeepingPosition(spotifyPlaylistListView_->tableView);
-                isLoadingMoreSpotifyPlaylists_ = false;
+        // Load playlists
+        std::vector<spotify::Playlist> playlists;
+        try {
+            playlists = spotifyClient->getPlaylists();
+            playlists.insert(playlists.begin(), spotifyClient->getLikedSongsPlaylist());
+        } catch (const std::exception& exception) {
+            isLoadingMoreSpotifyPlaylists_ = false;
+            SpotifySearch::Log.error("Failed loading playlists: {}", exception.what());
+            BSML::MainThreadScheduler::Schedule([this]() {
+                onSpotifyTrackLoadingError("Loading Error");
             });
-        }).detach();
-    };
-    spotifyPlaylistTableViewDataSource->setOnLoadItemCallback([spotifyPlaylistTableViewDataSource, loadSpotifyPlaylists](const size_t index) {
-        if (index > spotifyPlaylistTableViewDataSource->playlists_.size() - 10) {
-            loadSpotifyPlaylists(index);
+            return;
         }
-    });
-    loadSpotifyPlaylists(spotifyPlaylistTableViewDataSource->NumberOfCells());
+        BSML::MainThreadScheduler::Schedule([this, spotifyPlaylistTableViewDataSource, playlists]() {
+            showSpotifyPlaylistListView();
+            spotifyPlaylistTableViewDataSource->playlists_.insert(spotifyPlaylistTableViewDataSource->playlists_.end(), playlists.begin(), playlists.end());
+            Utils::reloadDataKeepingPosition(spotifyPlaylistListView_->tableView);
+            isLoadingMoreSpotifyPlaylists_ = false;
+        });
+    }).detach();
 }
 
 void MainViewController::onPlaylistsMenuButtonClicked() {
     selectedPlaylist_ = nullptr;
+    selectedTrack_ = nullptr;
 
     // Hide tracks list
     spotifyTrackListView_->get_gameObject()->set_active(false);
@@ -491,12 +479,14 @@ void MainViewController::onPlaylistsMenuButtonClicked() {
 
     randomTrackButton_->get_gameObject()->set_active(false);
 
-    spotifyListViewErrorContainer_->get_gameObject()->set_active(false);
+    resetListError();
+    spotifyTrackListLoadingIndicatorContainer_->get_gameObject()->set_active(false);
 }
 
 void MainViewController::onPlaylistSelected(UnityW<HMUI::TableView> table, int id) {
     const auto* const spotifyPlaylistTableViewDataSource = gameObject->GetComponent<SpotifyPlaylistTableViewDataSource*>();
     selectedPlaylist_ = std::make_unique<spotify::Playlist>(spotifyPlaylistTableViewDataSource->playlists_.at(id));
+    SpotifySearch::Log.info("Selected playlist: {}", selectedPlaylist_->id);
 
     // Hide playlists list
     spotifyPlaylistListView_->get_gameObject()->set_active(false);
@@ -508,7 +498,6 @@ void MainViewController::onPlaylistSelected(UnityW<HMUI::TableView> table, int i
     spotifyColumnTitleTextView_->set_text(selectedPlaylist_->name);
 
     // Load tracks list
-    allTracksLoaded_ = false;
     auto* spotifyTrackTableViewDataSource = gameObject->GetComponent<SpotifyTrackTableViewDataSource*>();
     if (spotifyTrackTableViewDataSource) {
         spotifyTrackTableViewDataSource->tracks_.clear();
@@ -645,6 +634,8 @@ void MainViewController::setSelectedSongUi(const SongDetailsCache::Song* const s
 }
 
 void MainViewController::doSongSearch(const spotify::Track& track) {
+    SpotifySearch::Log.info("Searching for track: {}", track.id);
+
     // Show loading indicator
     searchResultsListLoadingIndicatorContainer_->get_gameObject()->set_active(true);
     searchResultsList_->get_gameObject()->set_active(false);
@@ -654,6 +645,8 @@ void MainViewController::doSongSearch(const spotify::Track& track) {
     const CustomSongFilter customSongFilter = customSongFilter_;
     std::thread([this, track, customSongFilter]() {
         SongDetailsCache::SongDetails* songDetails = SongDetailsCache::SongDetails::Init().get();
+
+        auto filterStage1StartTime = std::chrono::high_resolution_clock::now();
         std::vector<const SongDetailsCache::Song*> songs = songDetails->FindSongs([customSongFilter](const SongDetailsCache::SongDifficulty& songDifficulty) {
             // Difficulty
             const std::vector<SongDetailsCache::MapDifficulty>& filterMapDifficulties = customSongFilter.difficulties_;
@@ -673,8 +666,10 @@ void MainViewController::doSongSearch(const spotify::Track& track) {
 
             return true;
         });
+        SpotifySearch::Log.info("Filter stage 1: songs = {} time = {} ms.", songs.size(), std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - filterStage1StartTime).count());
 
         // Filter songs
+        auto filterStage2StartTime = std::chrono::high_resolution_clock::now();
         songs.erase(
             std::remove_if(
                 songs.begin(), songs.end(),
@@ -682,11 +677,14 @@ void MainViewController::doSongSearch(const spotify::Track& track) {
                     return !currentSongFilter_(song, track);
                 }),
             songs.end());
+        SpotifySearch::Log.info("Filter stage 2: songs = {} time = {} ms.", songs.size(), std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - filterStage2StartTime).count());
 
         // Sort songs
+        auto sortStartTime = std::chrono::high_resolution_clock::now();
         std::stable_sort(songs.begin(), songs.end(), [&](const SongDetailsCache::Song* const a, const SongDetailsCache::Song* const b) {
             return currentSongScore_(track, *a) > currentSongScore_(track, *b);
         });
+        SpotifySearch::Log.info("Sort time: {} ms.", std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - sortStartTime).count());
 
         /*for (int i = 0; i < std::min(10, (int) songs.size()); ++i) {
             SpotifySearch::Log.info("[{}] SCORE: {} SONG: {}", i, currentSongScore_(track, *songs.at(i)), songs.at(i)->songName());
@@ -695,14 +693,14 @@ void MainViewController::doSongSearch(const spotify::Track& track) {
         BSML::MainThreadScheduler::Schedule([this, track, songs]() {
             // Check if the user canceled the selection
             if (selectedTrack_ == nullptr) {
+                SpotifySearch::Log.warn("Ignoring search results because the selected track is null!");
                 isSearchInProgress_ = false;
-                searchResultsListLoadingIndicatorContainer_->get_gameObject()->set_active(false);
-                searchResultsList_->get_gameObject()->set_active(true);
                 return;
             }
 
             // Check if the user selected a different track
             if (*selectedTrack_ != track) {
+                SpotifySearch::Log.warn("Ignoring search results because the selected track has changed! (requested = {} / current = {})", track.id, selectedTrack_->id);
                 isSearchInProgress_ = false;
                 return;
             }
@@ -729,7 +727,6 @@ void MainViewController::doSongSearch(const spotify::Track& track) {
             // Automatically select the first search result
             if (!searchResultItems_.empty()) {
                 searchResultsList_->tableView->SelectCellWithIdx(0, true);
-                onSearchResultSelected(searchResultsList_->tableView, 0);
             }
         });
     }).detach();

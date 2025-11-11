@@ -23,7 +23,6 @@ void SettingsViewController::DidActivate(const bool isFirstActivation, bool adde
         BSML::parse_and_construct(Assets::SettingsViewController_bsml, this->get_transform(), this);
 
         isClearingCache_ = false;
-        isNewLoginRequired_ = false;
         showModalOnChange_ = true;
 
 #if HOT_RELOAD
@@ -116,6 +115,7 @@ void SettingsViewController::onLoginOrLogoutButtonClicked() {
             SpotifySearch::spotifyClient->logout();
             refreshSpotifyAccountStatus();
             SpotifySearch::spotifySearchFlowCoordinator_.clear();
+            modalView_->hide(true);
         });
         modalView_->setSecondaryButton(true, "Cancel", nullptr);
         modalView_->show();
@@ -131,12 +131,15 @@ void SettingsViewController::onClearCacheButtonClicked() {
         return;
     }
     isClearingCache_ = true;
+    clearCacheButton_->set_interactable(false);
+    cacheSizeTextView_->set_text("(Clearing...)");
 
     std::thread([this]() {
         std::filesystem::remove_all(SpotifySearch::getDataDirectory() / "cache");
         isClearingCache_ = false;
         BSML::MainThreadScheduler::Schedule([this]() {
-            PostParse();
+            clearCacheButton_->set_interactable(true);
+            refreshCacheSizeStatus();
         });
     }).detach();
 }

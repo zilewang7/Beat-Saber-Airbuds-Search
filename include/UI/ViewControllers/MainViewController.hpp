@@ -11,9 +11,9 @@
 #include "custom-types/shared/macros.hpp"
 #include "song-details/shared/SongDetails.hpp"
 
-#include "SpotifyClient.hpp"
-#include "UI/TableViewDataSources/DownloadHistoryTableViewDataSource.hpp"
 #include "CustomSongFilter.hpp"
+#include "Spotify/SpotifyClient.hpp"
+#include "UI/TableViewDataSources/DownloadHistoryTableViewDataSource.hpp"
 
 #if HOT_RELOAD
 #include "bsml/shared/BSML/ViewControllers/HotReloadViewController.hpp"
@@ -31,7 +31,7 @@ using SongScoreFunction = std::function<int(const spotify::Track& track, const S
 extern SongFilterFunction DEFAULT_SONG_FILTER_FUNCTION;
 extern SongScoreFunction DEFAULT_SONG_SCORE_FUNCTION;
 
-}
+} // namespace SpotifySearch::Filter
 
 DECLARE_CLASS_CODEGEN_INTERFACES(SpotifySearch::UI::ViewControllers, MainViewController, BaseViewController) {
 
@@ -110,9 +110,6 @@ DECLARE_CLASS_CODEGEN_INTERFACES(SpotifySearch::UI::ViewControllers, MainViewCon
     std::atomic<bool> isLoadingMoreSpotifyTracks_;
     std::atomic<bool> isLoadingMoreSpotifyPlaylists_;
     std::atomic<bool> isSearchInProgress_;
-
-    std::atomic<bool> allTracksLoaded_;
-    std::atomic<bool> allPlaylistsLoaded_;
 
     std::atomic<bool> isShowingAllTracksByArtist_;
     std::atomic<bool> isShowingDownloadedMaps_;

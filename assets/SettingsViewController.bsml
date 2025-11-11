@@ -1,7 +1,7 @@
 <bg xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance'
     xsi:noNamespaceSchemaLocation='https://raw.githubusercontent.com/RedBrumbler/Quest-BSML-Docs/gh-pages/schema.xsd'>
 
-    <vertical horizontal-fit="Unconstrained" spacing="2">
+    <vertical horizontal-fit="Unconstrained" spacing="2" child-control-height="false" child-align="UpperCenter" child-expand-height="false">
 
         <!-- Spotify Account -->
         <horizontal spacing="4">
@@ -43,8 +43,6 @@
             </vertical>
             <checkbox text="" id="requirePinCheckbox_" on-change="onRequirePinCheckboxChanged" pref-width="45"/>
         </horizontal>
-
-        <vertical flex-height="100"/>
     </vertical>
 
 </bg>

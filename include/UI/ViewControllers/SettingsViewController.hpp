@@ -53,7 +53,5 @@ DECLARE_CLASS_CODEGEN_INTERFACES(SpotifySearch::UI::ViewControllers, SettingsVie
 
     std::atomic_bool isClearingCache_;
 
-    std::atomic_bool isNewLoginRequired_;
-
     std::atomic_bool showModalOnChange_;
 };

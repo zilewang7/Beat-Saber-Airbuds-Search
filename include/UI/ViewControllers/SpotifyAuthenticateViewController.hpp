@@ -3,7 +3,7 @@
 #include <custom-types/shared/macros.hpp>
 #include <HMUI/InputFieldView.hpp>
 
-#include "SpotifyClient.hpp"
+#include "Spotify/SpotifyClient.hpp"
 #include "UI/ModalView.hpp"
 
 #if HOT_RELOAD

@@ -30,7 +30,7 @@ void SpotifyTrackTableViewCell::updateBackground() {
     root_->set_color(UnityEngine::Color(0, 0, 0, selected || highlighted ? 0.8f : 0.45f));
 }
 
-void SpotifyTrackTableViewCell::setTrack(const spotify::Track& track) {
+void SpotifyTrackTableViewCell::setTrack(const spotify::PlaylistTrack& track) {
     track_ = track;
 
     // Name
@@ -54,7 +54,6 @@ void SpotifyTrackTableViewCell::setTrack(const spotify::Track& track) {
     if (!track.album.url.empty()) {
         const std::string trackId = track.id;
         Utils::getImageAsSprite(track.album.url, [this, trackId](const UnityW<UnityEngine::Sprite> sprite) {
-
             // Check if the selected song has changed
             if (track_.id != trackId) {
                 SpotifySearch::Log.warn("Cancelled sprite update");

@@ -5,7 +5,7 @@
 #include "custom-types/shared/macros.hpp"
 #include "song-details/shared/SongDetails.hpp"
 
-#include "SpotifyClient.hpp"
+#include "Spotify/SpotifyClient.hpp"
 
 #if HOT_RELOAD
 #include "bsml/shared/BSML/ViewControllers/HotReloadViewController.hpp"

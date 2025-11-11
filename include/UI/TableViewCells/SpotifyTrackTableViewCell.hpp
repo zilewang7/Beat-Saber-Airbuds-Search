@@ -35,10 +35,10 @@ DECLARE_CLASS_CODEGEN(SpotifySearch::UI, SpotifyTrackTableViewCell, HMUI::TableC
 
     public:
     static constexpr std::string_view CELL_REUSE_ID = "SpotifyTrackTableViewCell";
-    void setTrack(const spotify::Track& track);
+    void setTrack(const spotify::PlaylistTrack& track);
 
     private:
     void updateBackground();
 
-    spotify::Track track_;
+    spotify::PlaylistTrack track_;
 };

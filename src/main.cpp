@@ -11,7 +11,7 @@
 #include "BeatSaverUtils.hpp"
 #include "Configuration.hpp"
 #include "Log.hpp"
-#include "SpotifyClient.hpp"
+#include "Spotify/SpotifyClient.hpp"
 #include "UI/FlowCoordinators/SpotifySearchFlowCoordinator.hpp"
 #include "UI/ViewControllers/SettingsViewController.hpp"
 #include "main.hpp"

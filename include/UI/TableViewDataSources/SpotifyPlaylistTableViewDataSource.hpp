@@ -12,10 +12,6 @@ DECLARE_CLASS_CODEGEN_INTERFACES(SpotifySearch::UI, SpotifyPlaylistTableViewData
     DECLARE_OVERRIDE_METHOD_MATCH(float, CellSize, &HMUI::TableView::IDataSource::CellSize);
     DECLARE_OVERRIDE_METHOD_MATCH(int, NumberOfCells, &HMUI::TableView::IDataSource::NumberOfCells);
 
-    private:
-    std::function<void(size_t index)> onLoadItemCallback_;
-
     public:
     std::vector<spotify::Playlist> playlists_;
-    void setOnLoadItemCallback(std::function<void(size_t index)> callback);
 };

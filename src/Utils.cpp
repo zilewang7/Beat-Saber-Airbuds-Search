@@ -28,25 +28,6 @@ using ::GlobalNamespace::LevelSelectionFlowCoordinator;
 using ::GlobalNamespace::SelectLevelCategoryViewController;
 using ::GlobalNamespace::SoloFreePlayFlowCoordinator;
 
-namespace SpotifySearch::Utils::json {
-
-std::string getString(const rapidjson::Value& json, const std::string& key) {
-    if (!json.HasMember(key)) {
-        throw std::runtime_error(std::format("Missing key: {}", key));
-    }
-    const auto& jsonValue = json[key];
-    if (!jsonValue.IsString()) {
-        throw std::runtime_error(std::format("Unexpected type for key: {}", key));
-    }
-    const std::string value = jsonValue.GetString();
-    if (value.empty()) {
-        throw std::runtime_error(std::format("Value for key was empty: {}", key));
-    }
-    return value;
-}
-
-}// namespace SpotifySearch::Utils::json
-
 std::string SpotifySearch::Utils::encodeBase64(const std::string& input) {
     static const char b64_table[] =
         "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
@@ -278,6 +259,10 @@ void removeRaycastFromButtonIcon(UnityW<UnityEngine::UI::Button> button) {
     auto icon = button->get_transform()->Find("Content/Icon");
     auto component = icon->get_gameObject()->GetComponent<HMUI::ImageView*>();
     component->set_raycastTarget(false);
+}
+
+void setIconScale(UnityW<UnityEngine::UI::Button> button, const float scale) {
+    button->get_transform()->Find("Content/Icon")->set_localScale({scale, scale, scale});
 }
 
 }// namespace SpotifySearch::Utils

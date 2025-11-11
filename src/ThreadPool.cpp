@@ -2,6 +2,8 @@
 
 namespace SpotifySearch {
 
+ThreadPool::ThreadPool(size_t maxThreadCount) : maxThreadCount_(maxThreadCount) {}
+
 void ThreadPool::submit(const std::function<void()>& task) {
     std::unique_lock lock(mutex_);
 
@@ -14,7 +16,6 @@ void ThreadPool::submit(const std::function<void()>& task) {
     static size_t id = 0;
     Job job{id++, task};
     std::thread thread([this, job]() {
-        SpotifySearch::Log.info("Starting job id = {}", job.id_);
         job.task_();
         onJobFinished(job);
     });
@@ -30,10 +31,13 @@ void ThreadPool::wait() {
 }
 
 void ThreadPool::onJobFinished(const Job& job) {
-    SpotifySearch::Log.info("Job finished: id = {}", job.id_);
     std::unique_lock lock(mutex_);
     jobs_.erase(std::remove(jobs_.begin(), jobs_.end(), job), jobs_.end());
     conditionVariable_.notify_all();
 }
 
+void ThreadPool::setMaxThreadCount(const size_t maxThreadCount) {
+    maxThreadCount_ = maxThreadCount;
 }
+
+} // namespace SpotifySearch
