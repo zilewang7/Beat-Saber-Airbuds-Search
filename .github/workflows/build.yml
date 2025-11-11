@@ -43,5 +43,5 @@ jobs:
           compression-level: 0
           path: |
             build/libspotify-search.so
-            build/debug/libspotify-search.so
+            build/debug/libspotify-search.so.debug
             build/spotify-search-v*.qmod
