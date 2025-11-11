@@ -26,9 +26,6 @@ DECLARE_CLASS_CODEGEN_INTERFACES(SpotifySearch::UI::ViewControllers, SpotifyLogi
 
     DECLARE_INSTANCE_METHOD(void, PostParse);
 
-    // Description
-    DECLARE_INSTANCE_METHOD(void, onIntroductionTextClicked);
-
     // Client ID
     DECLARE_INSTANCE_FIELD(UnityW<HMUI::InputFieldView>, clientIdTextField_);
     DECLARE_INSTANCE_FIELD(UnityW<UnityEngine::UI::Button>, clientIdPasteButton_);

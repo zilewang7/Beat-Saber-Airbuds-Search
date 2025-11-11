@@ -316,13 +316,3 @@ void SpotifyLoginViewController::onLoginButtonClicked() {
         SpotifySearch::Log.error("Failed to open web browser: {}", exception.what());
     }
 }
-
-void SpotifyLoginViewController::onIntroductionTextClicked() {
-    // Open web browser
-    try {
-        static auto UnityEngine_Application_OpenURL = il2cpp_utils::resolve_icall<void, StringW>("UnityEngine.Application::OpenURL");
-        UnityEngine_Application_OpenURL("https://google.com");
-    } catch (const std::exception& exception) {
-        SpotifySearch::Log.error("Failed to open web browser: {}", exception.what());
-    }
-}
