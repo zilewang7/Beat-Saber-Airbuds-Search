@@ -26,4 +26,6 @@ if (-not ($PSVersionTable.PSEdition -eq "Core")) {
     $stackScript += ".cmd"
 }
 
+Write-Output "NDK PATH: $stackScript"
+
 Get-Content $logName | & $stackScript -sym ./build/debug/

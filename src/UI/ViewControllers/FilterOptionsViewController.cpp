@@ -7,7 +7,7 @@
 #include "UnityEngine/Resources.hpp"
 #include "bsml/shared/Helpers/getters.hpp"
 
-#include "Assets.hpp"
+#include "assets.hpp"
 #include "UI/ViewControllers/FilterOptionsViewController.hpp"
 #include "Log.hpp"
 #include "Utils.hpp"

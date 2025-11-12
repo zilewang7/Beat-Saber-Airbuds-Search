@@ -1,5 +1,5 @@
 #include "UI/TableViewDataSources/CustomSongTableViewDataSource.hpp"
-#include "Assets.hpp"
+#include "assets.hpp"
 #include "Log.hpp"
 #include "UI/TableViewCells/CustomSongTableViewCell.hpp"
 

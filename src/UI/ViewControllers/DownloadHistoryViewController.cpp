@@ -3,7 +3,7 @@
 #include "HMUI/Touchable.hpp"
 #include "bsml/shared/BSML.hpp"
 
-#include "Assets.hpp"
+#include "assets.hpp"
 #include "UI/TableViewDataSources/DownloadHistoryTableViewDataSource.hpp"
 #include "UI/ViewControllers/DownloadHistoryViewController.hpp"
 

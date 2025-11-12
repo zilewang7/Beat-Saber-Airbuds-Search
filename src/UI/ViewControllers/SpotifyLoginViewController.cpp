@@ -12,7 +12,7 @@
 #include <bsml/shared/BSML/Components/ButtonIconImage.hpp>
 #include <jni.h>
 
-#include "Assets.hpp"
+#include "assets.hpp"
 #include "Log.hpp"
 #include "SpriteCache.hpp"
 #include "UI/ViewControllers/SpotifyLoginViewController.hpp"

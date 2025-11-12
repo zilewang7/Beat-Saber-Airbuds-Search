@@ -129,6 +129,25 @@ class Context:
         return self._build_type
 
 
+def do_clean(context: Context):
+    build_output_dir = context.project_output_dir
+    if build_output_dir.exists():
+        logger.info(f'Removing directory: "{build_output_dir.absolute()}"')
+        shutil.rmtree(build_output_dir)
+
+    auto_generated_files = [
+        Path(context.project_root_dir, p) for p in [
+            'qpm.shared.json',
+            'qpm_defines.cmake',
+            'include/assets.hpp'
+        ]
+    ]
+    for path in auto_generated_files:
+        if path.exists():
+            logger.info(f'Removing file: "{path.absolute()}"')
+            path.unlink()
+
+
 def build(context: Context):
     project_dir = context.project_root_dir.resolve().absolute()
     output_dir = context.project_output_dir.resolve().absolute()
@@ -262,9 +281,16 @@ def main():
 
     # Clean build output
     if clean:
-        logger.info(f'Cleaning build output at "{build_output_dir.absolute()}"')
-        if build_output_dir.exists():
-            shutil.rmtree(build_output_dir)
+        do_clean(context)
+
+    # Pre-build
+    process = subprocess.run([
+        'qpm',
+        'restore',
+    ], cwd=context.project_root_dir, stderr=subprocess.STDOUT)
+    if process.returncode != 0:
+        logger.error(f'Command Failed! Exit Code = {process.returncode}')
+        return
 
     # Build
     start_time = time.time()

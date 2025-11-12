@@ -2,7 +2,7 @@
 
 #include <bsml/shared/BSML.hpp>
 
-#include "Assets.hpp"
+#include "assets.hpp"
 #include "Log.hpp"
 
 DEFINE_TYPE(SpotifySearch::UI, ModalView);

@@ -9,7 +9,7 @@
 #include <bsml/shared/Helpers/delegates.hpp>
 #include <bsml/shared/Helpers/getters.hpp>
 
-#include "Assets.hpp"
+#include "assets.hpp"
 #include "UI/FlowCoordinators/SpotifySearchFlowCoordinator.hpp"
 #include "UI/ViewControllers/SettingsViewController.hpp"
 #include "main.hpp"

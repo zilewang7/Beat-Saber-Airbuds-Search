@@ -16,7 +16,7 @@
 #include "web-utils/shared/WebUtils.hpp"
 #include <UnityEngine/CanvasGroup.hpp>
 
-#include "Assets.hpp"
+#include "assets.hpp"
 #include "BeatSaverUtils.hpp"
 #include "Log.hpp"
 #include "SpriteCache.hpp"

@@ -2,7 +2,7 @@
 
 #include <HMUI/Touchable.hpp>
 
-#include "Assets.hpp"
+#include "assets.hpp"
 #include "Log.hpp"
 #include "UI/TableViewCells/DownloadHistoryTableViewCell.hpp"
 

@@ -4,7 +4,7 @@
 #include "bsml/shared/Helpers/getters.hpp"
 #include "bsml/shared/BSML/ViewControllers/HotReloadViewController.hpp"
 
-#include "Assets.hpp"
+#include "assets.hpp"
 #include "Log.hpp"
 #include "main.hpp"
 

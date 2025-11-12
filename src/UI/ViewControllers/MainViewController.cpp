@@ -17,7 +17,7 @@
 #include <bsml/shared/BSML/Animations/AnimationStateUpdater.hpp>
 #include <bsml/shared/BSML/Components/ButtonIconImage.hpp>
 
-#include "Assets.hpp"
+#include "assets.hpp"
 #include "CustomSongFilter.hpp"
 #include "HMUI/Touchable.hpp"
 #include "Log.hpp"

@@ -1,7 +1,7 @@
 #include "HMUI/Touchable.hpp"
 #include "bsml/shared/BSML/MainThreadScheduler.hpp"
 
-#include "Assets.hpp"
+#include "assets.hpp"
 #include "Log.hpp"
 #include "UI/TableViewCells/SpotifyPlaylistTableViewCell.hpp"
 #include "UI/TableViewDataSources/SpotifyPlaylistTableViewDataSource.hpp"
