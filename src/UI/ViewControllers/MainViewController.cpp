@@ -118,7 +118,7 @@ SongScoreFunction DEFAULT_SONG_SCORE_FUNCTION = [](const spotify::Track& track, 
 
 void MainViewController::DidActivate(const bool isFirstActivation, const bool addedToHierarchy, const bool screenSystemDisabling) {
     if (isFirstActivation) {
-        BSML::parse_and_construct(Assets::MainViewController_bsml, this->get_transform(), this);
+        BSML::parse_and_construct(IncludedAssets::MainViewController_bsml, this->get_transform(), this);
 
 #if HOT_RELOAD
         fileWatcher->filePath = "/sdcard/MainViewController.bsml";
@@ -290,7 +290,7 @@ void MainViewController::PostParse() {
     static constexpr std::string_view KEY_DL_ICON = "show-downloaded-songs-icon";
     UnityW<UnityEngine::Sprite> sprite = SpriteCache::getInstance().get(KEY_DL_ICON);
     if (!sprite) {
-        sprite = BSML::Lite::ArrayToSprite(Assets::_binary_show_downloaded_songs_png_start);
+        sprite = BSML::Lite::ArrayToSprite(IncludedAssets::show_downloaded_songs_png);
         SpriteCache::getInstance().add(KEY_DL_ICON, sprite);
     }
     hideDownloadedMapsButton_->GetComponent<BSML::ButtonIconImage*>()->SetIcon(sprite);

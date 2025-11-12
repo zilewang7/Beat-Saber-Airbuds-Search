@@ -14,7 +14,7 @@ using namespace SpotifySearch::UI::ViewControllers;
 
 void DownloadHistoryViewController::DidActivate(const bool isFirstActivation, const bool addedToHierarchy, const bool screenSystemDisabling) {
     if (isFirstActivation) {
-        BSML::parse_and_construct(Assets::DownloadHistoryViewController_bsml, this->get_transform(), this);
+        BSML::parse_and_construct(IncludedAssets::DownloadHistoryViewController_bsml, this->get_transform(), this);
 
 #if HOT_RELOAD
         fileWatcher->filePath = "/sdcard/DownloadHistoryViewController.bsml";

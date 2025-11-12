@@ -20,7 +20,7 @@ HMUI::TableCell* SpotifyPlaylistTableViewDataSource::CellForIdx(HMUI::TableView*
         spotifyCell->set_interactable(true);
 
         spotifyCell->set_reuseIdentifier(SpotifyPlaylistTableViewCell::CELL_REUSE_ID);
-        BSML::parse_and_construct(Assets::SpotifyPlaylistTableViewCell_bsml, spotifyCell->get_transform(), spotifyCell);
+        BSML::parse_and_construct(IncludedAssets::SpotifyPlaylistTableViewCell_bsml, spotifyCell->get_transform(), spotifyCell);
         spotifyCell->get_gameObject()->AddComponent<HMUI::Touchable*>();
     } else {
         spotifyCell = tcd->GetComponent<SpotifyPlaylistTableViewCell*>();

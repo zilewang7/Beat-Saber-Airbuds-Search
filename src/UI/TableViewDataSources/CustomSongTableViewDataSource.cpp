@@ -19,7 +19,7 @@ HMUI::TableCell* CustomSongTableViewDataSource::CellForIdx(HMUI::TableView* tabl
         spotifyCell->set_interactable(true);
 
         spotifyCell->set_reuseIdentifier("CustomSongListTableCellReuseIdentifier");
-        BSML::parse_and_construct(Assets::CustomSongTableViewCell_bsml, spotifyCell->get_transform(), spotifyCell);
+        BSML::parse_and_construct(IncludedAssets::CustomSongTableViewCell_bsml, spotifyCell->get_transform(), spotifyCell);
     } else {
         spotifyCell = tcd->GetComponent<CustomSongTableViewCell*>();
     }

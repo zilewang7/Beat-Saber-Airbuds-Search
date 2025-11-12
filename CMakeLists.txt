@@ -10,6 +10,12 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS TRUE)
 set(SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/src)
 set(INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/include)
 
+add_compile_options(-frtti -fexceptions -fvisibility=hidden -fPIE -fPIC)
+
+# Include. Include order matters!
+include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/utils.cmake)
+include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/qpm.cmake)
+
 # Enable hot reload on debug builds
 if (NOT DEFINED HOT_RELOAD)
     if (${CMAKE_BUILD_TYPE} MATCHES "^(Release|RelWithDebInfo|MinSizeRel)$")
@@ -21,17 +27,9 @@ endif ()
 add_compile_definitions(HOT_RELOAD=${HOT_RELOAD})
 message(STATUS "HOT_RELOAD = ${HOT_RELOAD}")
 
-add_compile_options(-frtti -fexceptions -fvisibility=hidden -fPIE -fPIC)
-
-# Include. Include order matters!
-include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/utils.cmake)
-include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/qpm.cmake)
-
-include(${EXTERN_DIR}/includes/kaleb/shared/cmake/assets.cmake)
-
 if (${CMAKE_BUILD_TYPE} STREQUAL "RELEASE" OR ${CMAKE_BUILD_TYPE} STREQUAL "RelWithDebInfo" OR ${CMAKE_BUILD_TYPE} STREQUAL "MinSizeRel")
     # Better optimizations
-    add_compile_options(-O2)
+    add_compile_options(-O3)
 
     # LTO
     set(CMAKE_INTERPROCEDURAL_OPTIMIZATION TRUE)
@@ -53,8 +51,7 @@ include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/strip.cmake)
 # stop symbols leaking
 # TODO: Fix
 # add_link_options(-Wl, --exclude-libs, ALL)
-project(spotify-search
-        VERSION ${PACKAGE_VERSION})
+project(spotify-search VERSION ${PACKAGE_VERSION})
 
 add_compile_definitions(MOD_ID="${CMAKE_PROJECT_NAME}")
 add_compile_definitions(VERSION="${CMAKE_PROJECT_VERSION}")
@@ -90,5 +87,4 @@ target_sources(${COMPILE_ID} PRIVATE ${src_inline_hook_beatsaber_hook_local_extr
 target_sources(${COMPILE_ID} PRIVATE ${src_inline_hook_beatsaber_hook_local_extra_cpp})
 
 # Add assets
-add_assets(${COMPILE_ID}-assets STATIC ${CMAKE_CURRENT_LIST_DIR}/assets ${INCLUDE_DIR}/Assets.hpp)
-target_link_libraries(${COMPILE_ID} PRIVATE ${COMPILE_ID}-assets)
+include(extern/includes/metacore/shared/assets.cmake)

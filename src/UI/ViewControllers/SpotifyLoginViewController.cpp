@@ -28,7 +28,7 @@ static constexpr const int REDIRECT_URI_PORT = 9999;
 
 void SpotifyLoginViewController::DidActivate(const bool isFirstActivation, const bool addedToHierarchy, const bool screenSystemDisabling) {
     if (isFirstActivation) {
-        BSML::parse_and_construct(Assets::SpotifyLoginViewController_bsml, this->get_transform(), this);
+        BSML::parse_and_construct(IncludedAssets::SpotifyLoginViewController_bsml, this->get_transform(), this);
 
 #if HOT_RELOAD
         fileWatcher->filePath = "/sdcard/SpotifyLoginViewController.bsml";
@@ -50,7 +50,7 @@ void SpotifyLoginViewController::PostParse() {
     static constexpr std::string_view KEY_CLIPBOARD_ICON = "clipboard-icon";
     UnityW<UnityEngine::Sprite> sprite = SpriteCache::getInstance().get(KEY_CLIPBOARD_ICON);
     if (!sprite) {
-        sprite = BSML::Lite::ArrayToSprite(Assets::_binary_clipboard_icon_png_start);
+        sprite = BSML::Lite::ArrayToSprite(IncludedAssets::clipboard_icon_png);
         SpriteCache::getInstance().add(KEY_CLIPBOARD_ICON, sprite);
     }
     const std::vector<UnityW<UnityEngine::UI::Button>> pasteButtons = {

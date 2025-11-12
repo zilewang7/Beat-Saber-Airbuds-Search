@@ -20,7 +20,7 @@ using namespace SpotifySearch::UI::ViewControllers;
 
 void SettingsViewController::DidActivate(const bool isFirstActivation, bool addedToHierarchy, bool screenSystemDisabling) {
     if (isFirstActivation) {
-        BSML::parse_and_construct(Assets::SettingsViewController_bsml, this->get_transform(), this);
+        BSML::parse_and_construct(IncludedAssets::SettingsViewController_bsml, this->get_transform(), this);
 
         isClearingCache_ = false;
         showModalOnChange_ = true;

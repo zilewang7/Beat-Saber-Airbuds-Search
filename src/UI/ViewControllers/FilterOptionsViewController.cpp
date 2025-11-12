@@ -22,7 +22,7 @@ using namespace SpotifySearch::UI::ViewControllers;
 void FilterOptionsViewController::DidActivate(bool firstActivation, bool addedToHierarchy, bool screenSystemDisabling) {
 
     if (firstActivation) {
-        BSML::parse_and_construct(Assets::FilterOptionsViewController_bsml, this->get_transform(), this);
+        BSML::parse_and_construct(IncludedAssets::FilterOptionsViewController_bsml, this->get_transform(), this);
 
 #if HOT_RELOAD
         fileWatcher->filePath = "/sdcard/FilterOptionsViewController.bsml";

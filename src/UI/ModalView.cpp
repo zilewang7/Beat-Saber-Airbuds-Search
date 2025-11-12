@@ -35,7 +35,7 @@ void ModalView::PostParse() {
 void ModalView::show() {
     if (!isInitialized_) {
         isInitialized_ = true;
-        BSML::parse_and_construct(Assets::BasicModal_bsml, this->get_transform(), this);
+        BSML::parse_and_construct(IncludedAssets::BasicModal_bsml, this->get_transform(), this);
     }
 
     auto updateButtonProperties = [this](UnityW<UnityEngine::UI::Button> button, ButtonData properties) {

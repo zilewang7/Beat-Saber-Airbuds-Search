@@ -186,7 +186,7 @@ UnityW<UnityEngine::Sprite> SpotifySearch::Utils::getPlaylistPlaceholderSprite()
     static constexpr std::string KEY_PLAYLIST_PLACEHOLDER = "playlist-placeholder";
     UnityW<UnityEngine::Sprite> sprite = SpriteCache::getInstance().get(KEY_PLAYLIST_PLACEHOLDER);
     if (!sprite) {
-        sprite = BSML::Lite::ArrayToSprite(Assets::_binary_playlist_art_placeholder_png_start);
+        sprite = BSML::Lite::ArrayToSprite(IncludedAssets::playlist_art_placeholder_png);
         SpriteCache::getInstance().add(KEY_PLAYLIST_PLACEHOLDER, sprite);
     }
     return sprite;
@@ -196,7 +196,7 @@ UnityW<UnityEngine::Sprite> SpotifySearch::Utils::getAlbumPlaceholderSprite() {
     static constexpr std::string KEY_ALBUM_PLACEHOLDER = "album-placeholder";
     UnityW<UnityEngine::Sprite> sprite = SpriteCache::getInstance().get(KEY_ALBUM_PLACEHOLDER);
     if (!sprite) {
-        sprite = BSML::Lite::ArrayToSprite(Assets::_binary_album_art_placeholder_png_start);
+        sprite = BSML::Lite::ArrayToSprite(IncludedAssets::album_art_placeholder_png);
         SpriteCache::getInstance().add(KEY_ALBUM_PLACEHOLDER, sprite);
     }
     return sprite;
