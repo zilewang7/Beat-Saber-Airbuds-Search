@@ -24,7 +24,7 @@ endif ()
 
 # Quest is armv8-64
 # Uses Android 12-14 now
-set(ANDROID_PLATFORM 24)
+set(ANDROID_PLATFORM 28)
 set(ANDROID_ABI arm64-v8a)
 set(ANDROID_STL c++_static)
 set(ANDROID_USE_LEGACY_TOOLCHAIN_FILE OFF)

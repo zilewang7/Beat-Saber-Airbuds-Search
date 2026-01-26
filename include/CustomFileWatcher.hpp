@@ -6,7 +6,7 @@
 #include "UnityEngine/MonoBehaviour.hpp"
 #include "custom-types/shared/macros.hpp"
 
-DECLARE_CLASS_CODEGEN(SpotifySearch, CustomFileWatcher, UnityEngine::MonoBehaviour) {
+DECLARE_CLASS_CODEGEN(AirbudsSearch, CustomFileWatcher, UnityEngine::MonoBehaviour) {
 
     DECLARE_CTOR(ctor);
 

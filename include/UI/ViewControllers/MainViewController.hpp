@@ -1,6 +1,7 @@
 #pragma once
 
 #include <atomic>
+#include <optional>
 #include <queue>
 
 #include "HMUI/ImageView.hpp"
@@ -12,7 +13,7 @@
 #include "song-details/shared/SongDetails.hpp"
 
 #include "CustomSongFilter.hpp"
-#include "Spotify/SpotifyClient.hpp"
+#include "Airbuds/AirbudsClient.hpp"
 #include "UI/TableViewDataSources/DownloadHistoryTableViewDataSource.hpp"
 
 #if HOT_RELOAD
@@ -23,17 +24,17 @@ using BaseViewController = BSML::HotReloadViewController;
 using BaseViewController = HMUI::ViewController;
 #endif
 
-namespace SpotifySearch::Filter {
+namespace AirbudsSearch::Filter {
 
-using SongFilterFunction = std::function<bool(const SongDetailsCache::Song* const song, const spotify::Track& track)>;
-using SongScoreFunction = std::function<int(const spotify::Track& track, const SongDetailsCache::Song& song)>;
+using SongFilterFunction = std::function<bool(const SongDetailsCache::Song* const song, const airbuds::Track& track)>;
+using SongScoreFunction = std::function<int(const airbuds::Track& track, const SongDetailsCache::Song& song)>;
 
 extern SongFilterFunction DEFAULT_SONG_FILTER_FUNCTION;
 extern SongScoreFunction DEFAULT_SONG_SCORE_FUNCTION;
 
-} // namespace SpotifySearch::Filter
+} // namespace AirbudsSearch::Filter
 
-DECLARE_CLASS_CODEGEN_INTERFACES(SpotifySearch::UI::ViewControllers, MainViewController, BaseViewController) {
+DECLARE_CLASS_CODEGEN_INTERFACES(AirbudsSearch::UI::ViewControllers, MainViewController, BaseViewController) {
 
     DECLARE_CTOR(ctor);
 
@@ -41,33 +42,37 @@ DECLARE_CLASS_CODEGEN_INTERFACES(SpotifySearch::UI::ViewControllers, MainViewCon
 
     DECLARE_INSTANCE_METHOD(void, PostParse);
 
-    // Spotify songs and playlists lists
+    // Airbuds songs and playlists lists
 
     // Header
-    DECLARE_INSTANCE_FIELD(UnityW<TMPro::TextMeshProUGUI>, spotifyColumnTitleTextView_);
+    DECLARE_INSTANCE_FIELD(UnityW<TMPro::TextMeshProUGUI>, airbudsColumnTitleTextView_);
     DECLARE_INSTANCE_FIELD(UnityW<UnityEngine::UI::Button>, playlistsMenuButton_);
     DECLARE_INSTANCE_METHOD(void, onPlaylistsMenuButtonClicked);
 
     // Playlist list
-    DECLARE_INSTANCE_FIELD(UnityW<BSML::CustomListTableData>, spotifyPlaylistListView_);
+    DECLARE_INSTANCE_FIELD(UnityW<BSML::CustomListTableData>, airbudsPlaylistListView_);
     DECLARE_INSTANCE_METHOD(void, onPlaylistSelected, UnityW<HMUI::TableView> table, int id);
 
     // Track list
-    DECLARE_INSTANCE_FIELD(UnityW<BSML::CustomListTableData>, spotifyTrackListView_);
+    DECLARE_INSTANCE_FIELD(UnityW<BSML::CustomListTableData>, airbudsTrackListView_);
     DECLARE_INSTANCE_METHOD(void, onTrackSelected, UnityW<HMUI::TableView> table, int id);
     DECLARE_INSTANCE_FIELD(UnityW<UnityEngine::UI::Button>, randomTrackButton_);
     DECLARE_INSTANCE_METHOD(void, onRandomTrackButtonClicked);
+    DECLARE_INSTANCE_FIELD(UnityW<UnityEngine::UI::Button>, randomScopeButton_);
+    DECLARE_INSTANCE_FIELD(UnityW<UnityEngine::UI::HorizontalLayoutGroup>, randomScopeToggleContainer_);
+    DECLARE_INSTANCE_FIELD(UnityW<TMPro::TextMeshProUGUI>, randomScopeButtonTextView_);
+    DECLARE_INSTANCE_METHOD(void, onRandomScopeToggleClicked);
 
-    DECLARE_INSTANCE_FIELD(UnityW<UnityEngine::UI::HorizontalLayoutGroup>, spotifyTrackListLoadingIndicatorContainer_);
+    DECLARE_INSTANCE_FIELD(UnityW<UnityEngine::UI::HorizontalLayoutGroup>, airbudsTrackListLoadingIndicatorContainer_);
 
     // Error message container
-    DECLARE_INSTANCE_FIELD(UnityW<UnityEngine::UI::VerticalLayoutGroup>, spotifyListViewErrorContainer_);
-    DECLARE_INSTANCE_FIELD(UnityW<TMPro::TextMeshProUGUI>, spotifyTrackListErrorMessageTextView_);
-    DECLARE_INSTANCE_METHOD(void, onSpotifyTrackListRetryButtonClicked);
+    DECLARE_INSTANCE_FIELD(UnityW<UnityEngine::UI::VerticalLayoutGroup>, airbudsListViewErrorContainer_);
+    DECLARE_INSTANCE_FIELD(UnityW<TMPro::TextMeshProUGUI>, airbudsTrackListErrorMessageTextView_);
+    DECLARE_INSTANCE_METHOD(void, onAirbudsTrackListRetryButtonClicked);
 
     // Status message container
-    DECLARE_INSTANCE_FIELD(UnityW<UnityEngine::UI::VerticalLayoutGroup>, spotifyListViewStatusContainer_);
-    DECLARE_INSTANCE_FIELD(UnityW<TMPro::TextMeshProUGUI>, spotifyTrackListStatusTextView_);
+    DECLARE_INSTANCE_FIELD(UnityW<UnityEngine::UI::VerticalLayoutGroup>, airbudsListViewStatusContainer_);
+    DECLARE_INSTANCE_FIELD(UnityW<TMPro::TextMeshProUGUI>, airbudsTrackListStatusTextView_);
 
     // Search results
     DECLARE_INSTANCE_FIELD(UnityW<BSML::CustomListTableData>, searchResultsList_);
@@ -100,34 +105,42 @@ DECLARE_CLASS_CODEGEN_INTERFACES(SpotifySearch::UI::ViewControllers, MainViewCon
     std::vector<const SongDetailsCache::Song*> searchResultItems_;
     const SongDetailsCache::Song* previewSong_;
 
-    std::unique_ptr<spotify::Playlist> selectedPlaylist_;
-    std::unique_ptr<const spotify::Track> selectedTrack_;
+    std::unique_ptr<airbuds::Playlist> selectedPlaylist_;
+    std::unique_ptr<const airbuds::Track> selectedTrack_;
 
     std::queue<std::shared_ptr<DownloadHistoryItem>> pendingDownloads_;
     std::mutex pendingDownloadsMutex_;
     std::atomic<bool> isDownloadThreadRunning_;
 
-    std::atomic<bool> isLoadingMoreSpotifyTracks_;
-    std::atomic<bool> isLoadingMoreSpotifyPlaylists_;
+    std::atomic<bool> isLoadingMoreAirbudsTracks_;
+    std::atomic<bool> isLoadingMoreAirbudsPlaylists_;
     std::atomic<bool> isSearchInProgress_;
 
     std::atomic<bool> isShowingAllTracksByArtist_;
-    std::atomic<bool> isShowingDownloadedMaps_;
+    std::atomic<bool> isShowingDownloadedMaps_{true};
 
-    SpotifySearch::Filter::SongFilterFunction currentSongFilter_;
-    SpotifySearch::Filter::SongScoreFunction currentSongScore_;
+    void setRandomScopeVisible(bool visible);
+    void updateRandomScopeButtonLabel();
+    void forceLayoutRebuild();
 
-    void reloadSpotifyTrackListView();
-    void reloadSpotifyPlaylistListView();
+    bool randomAcrossAllDays_;
+    std::optional<airbuds::PlaylistTrack> pendingRandomTrack_;
+
+    AirbudsSearch::Filter::SongFilterFunction currentSongFilter_;
+    AirbudsSearch::Filter::SongScoreFunction currentSongScore_;
+
+    void reloadAirbudsTrackListView();
+    void reloadAirbudsPlaylistListView();
+    bool selectPlaylistById(std::string_view playlistId);
 
     void setSelectedSongUi(const SongDetailsCache::Song* const song);
 
-    void showSpotifyTrackLoadingIndicator();
-    void showSpotifyTrackListView();
-    void showSpotifyPlaylistListView();
-    void onSpotifyTrackLoadingError(const std::string& message);
+    void showAirbudsTrackLoadingIndicator();
+    void showAirbudsTrackListView();
+    void showAirbudsPlaylistListView();
+    void onAirbudsTrackLoadingError(const std::string& message);
 
-    void doSongSearch(const spotify::Track& track);
+    void doSongSearch(const airbuds::Track& track);
 
     CustomSongFilter customSongFilter_;
 

@@ -2,7 +2,7 @@
 
 #include <string>
 
-namespace SpotifySearch {
+namespace AirbudsSearch {
 
 class BeatSaverUtils {
 
@@ -25,4 +25,4 @@ class BeatSaverUtils {
     std::string getPreviewDownloadUrl();
 };
 
-}// namespace SpotifySearch
+}// namespace AirbudsSearch

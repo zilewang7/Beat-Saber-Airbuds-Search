@@ -14,7 +14,7 @@
 #include "Log.hpp"
 #include "Utils.hpp"
 
-namespace SpotifySearch {
+namespace AirbudsSearch {
 
 Modal::Modal(UnityW<HMUI::ModalView> modalView) : modalView_(modalView) {
 }
@@ -42,7 +42,7 @@ void Modal::show() {
                     std::max(maxSizeDelta.x, t->get_sizeDelta().x),
                     std::max(maxSizeDelta.y, t->get_sizeDelta().y)};
             }
-            SpotifySearch::Log.info("Calculated modal size: ({}, {:.2f})", maxSizeDelta.x, maxSizeDelta.y);
+            AirbudsSearch::Log.info("Calculated modal size: ({}, {:.2f})", maxSizeDelta.x, maxSizeDelta.y);
 
             // TODO: Resize if >70
 
@@ -68,4 +68,4 @@ void Modal::hide(const bool animate) {
     }
 }
 
-}// namespace SpotifySearch
+}// namespace AirbudsSearch

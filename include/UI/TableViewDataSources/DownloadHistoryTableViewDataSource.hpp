@@ -45,7 +45,7 @@ struct DownloadHistoryItem {
     std::function<void(bool)> onDownloadStopped_;
 };
 
-DECLARE_CLASS_CODEGEN_INTERFACES(SpotifySearch::UI, DownloadHistoryTableViewDataSource, UnityEngine::MonoBehaviour, HMUI::TableView::IDataSource*) {
+DECLARE_CLASS_CODEGEN_INTERFACES(AirbudsSearch::UI, DownloadHistoryTableViewDataSource, UnityEngine::MonoBehaviour, HMUI::TableView::IDataSource*) {
 
     DECLARE_OVERRIDE_METHOD_MATCH(HMUI::TableCell*, CellForIdx, &HMUI::TableView::IDataSource::CellForIdx, HMUI::TableView * tableView, int idx);
     DECLARE_OVERRIDE_METHOD_MATCH(float, CellSize, &HMUI::TableView::IDataSource::CellSize);

@@ -17,7 +17,7 @@
 #include "song-details/shared/SongDetails.hpp"
 #include "UI/TableViewDataSources/DownloadHistoryTableViewDataSource.hpp"
 
-DECLARE_CLASS_CODEGEN(SpotifySearch::UI, DownloadHistoryTableViewCell, HMUI::TableCell) {
+DECLARE_CLASS_CODEGEN(AirbudsSearch::UI, DownloadHistoryTableViewCell, HMUI::TableCell) {
 
     DECLARE_CTOR(ctor);
 

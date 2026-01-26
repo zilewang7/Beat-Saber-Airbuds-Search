@@ -8,7 +8,7 @@
 
 #include "Modal.hpp"
 
-DECLARE_CLASS_CODEGEN_INTERFACES(SpotifySearch::UI, ModalView, UnityEngine::MonoBehaviour) {
+DECLARE_CLASS_CODEGEN_INTERFACES(AirbudsSearch::UI, ModalView, UnityEngine::MonoBehaviour) {
     DECLARE_CTOR(ctor);
     DECLARE_INSTANCE_METHOD(void, OnDisable);
 

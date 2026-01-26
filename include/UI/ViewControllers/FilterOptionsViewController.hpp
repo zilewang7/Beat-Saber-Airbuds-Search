@@ -18,7 +18,7 @@ using BaseViewController = HMUI::ViewController;
 #include "CustomSongFilter.hpp"
 #include "UI/ViewControllers/MainViewController.hpp"
 
-DECLARE_CLASS_CODEGEN_INTERFACES(SpotifySearch::UI::ViewControllers, FilterOptionsViewController, BaseViewController) {
+DECLARE_CLASS_CODEGEN_INTERFACES(AirbudsSearch::UI::ViewControllers, FilterOptionsViewController, BaseViewController) {
 
     DECLARE_OVERRIDE_METHOD_MATCH(void, DidActivate, &HMUI::ViewController::DidActivate, bool firstActivation, bool addedToHierarchy, bool screenSystemDisabling);
 

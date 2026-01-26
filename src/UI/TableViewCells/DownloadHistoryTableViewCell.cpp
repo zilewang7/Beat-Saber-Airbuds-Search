@@ -9,10 +9,10 @@
 #include "UI/TableViewCells/DownloadHistoryTableViewCell.hpp"
 #include "Utils.hpp"
 
-using namespace SpotifySearch::UI;
+using namespace AirbudsSearch::UI;
 using namespace GlobalNamespace;
 
-DEFINE_TYPE(SpotifySearch::UI, DownloadHistoryTableViewCell);
+DEFINE_TYPE(AirbudsSearch::UI, DownloadHistoryTableViewCell);
 
 void DownloadHistoryTableViewCell::ctor() {
     INVOKE_BASE_CTOR(classof(HMUI::TableCell*));
@@ -39,7 +39,7 @@ void DownloadHistoryTableViewCell::updateBackground() {
 }
 
 void DownloadHistoryTableViewCell::onPlayButtonClicked() {
-    SpotifySearch::Utils::goToLevelSelect(downloadHistoryItem_->song->hash());
+    AirbudsSearch::Utils::goToLevelSelect(downloadHistoryItem_->song->hash());
 }
 
 void DownloadHistoryTableViewCell::setDownloadHistoryItem(const std::shared_ptr<DownloadHistoryItem>& downloadHistoryItem) {
@@ -62,14 +62,14 @@ void DownloadHistoryTableViewCell::setDownloadHistoryItem(const std::shared_ptr<
     std::weak_ptr<bool> weakGuard = guard_;
     Utils::getCoverImageSprite(songHash, [this, weakGuard, songHash, weakDownloadHistoryItem](const UnityW<UnityEngine::Sprite> sprite) {
         if (!weakGuard.lock()) {
-            SpotifySearch::Log.warn("weakGuard was null!");
+            AirbudsSearch::Log.warn("weakGuard was null!");
             return;
         }
 
         // Check if the selected song has changed
         std::shared_ptr<DownloadHistoryItem> item = weakDownloadHistoryItem.lock();
         if (!item || item->song->hash() != songHash) {
-            SpotifySearch::Log.warn("Cancelled sprite update");
+            AirbudsSearch::Log.warn("Cancelled sprite update");
             return;
         }
 
@@ -77,7 +77,7 @@ void DownloadHistoryTableViewCell::setDownloadHistoryItem(const std::shared_ptr<
         if (sprite) {
             image_->set_sprite(sprite);
         } else {
-            SpotifySearch::Log.warn("Failed loading cover image for song with hash: {}", songHash);
+            AirbudsSearch::Log.warn("Failed loading cover image for song with hash: {}", songHash);
         }
     });
 

@@ -1,44 +1,76 @@
-# Beat Saber Spotify Search
+# Beat Saber Airbuds Search
 
-A Beat Saber mod for Quest 3 allowing you to access your Spotify playlists from within the game and quickly search for matching custom maps.
+A Beat Saber mod for Quest that uses your Airbuds listening history to search for matching custom maps on BeatSaver.
+
+Airbuds is a mobile app that supports viewing your playback records on the following music platforms: 
+- `Spotify`
+- `Apple Music`
+- `SoundCloud`
+- `Deezer`
+- `bAmazon Music`
+- `Audiomack`
+
+## Fork Notice
+
+This project is forked from [Beat-Saber-Spotify-Search](https://github.com/TychoTheTaco/Beat-Saber-Spotify-Search).
+
+Key differences:
+- Rebranded as Airbuds Search (mod id `airbuds-search`).
+- Romaji conversion is provided by an optional GPL Kakasi adapter mod (`airbuds-search-kakasi`).
+- Recently played list is grouped by day, cached to disk.
+- Show maps from BeatSaver ordered by matching of name and difficulty (no more filter but only order).
+- Register button into side menu of Solo and Multiplayer.
 
 
 ## Initial Setup
 
-> ℹ️ Note
->
-> Due to Spotify placing limitations on their API, using this mod will require you to create your own "Spotify App" in the Spotify Developer Dashboard. This is free and not too difficult to set up. The steps below will guide you through the process.
+You only need an Airbuds refresh token. The mod does not use Spotify login anymore.
 
-### 1. Creating a Spotify App
+1. Open the Airbuds Search mod.
+2. If no refresh token is saved, the mod shows a settings page. Paste your Airbuds app refresh token and press Save.
+3. Relaunch the game if needed.
 
-1. Navigate to the [Spotify Developer Dashboard](https://developer.spotify.com/dashboard).
-2. Click "Create app" in the top right corner.
-3. Fill out the details for your app. You can use any name and description.
-   - Make sure "Redirect URIs" __exactly__ matches `https://127.0.0.1:9999`
-   - Make sure "Web API" is checked under "Which API/SDKs are you planning to use?"
-4. Once your app is created, find its `Client ID` and `Client Secret` on the details page. Take note of these as they will be needed for the next step.
+You can also edit the config file directly:
 
-### 2. Logging in from the mod
+`/sdcard/ModData/com.beatgames.beatsaber/Mods/airbuds-search/airbuds-search.json`
 
-1. After installing the mod, you will be presented with a login screen asking for the `Client ID` and `Client Secret` from the previous step. You can type these in manually or open the [Spotify Developer Dashboard](https://developer.spotify.com/dashboard) on the Quest 3 browser and copy/paste them.
+Example:
 
-<img src="docs/login.png" alt="Login Screen" width="400">
+```json
+{
+  "airbuds": {
+    "refreshToken": "rt-your-token-here"
+  },
+  "filter": {
+    "difficulty": "Normal"
+  }
+}
+```
 
-2. After clicking Login, the Quest 3 web browser should open and ask you to sign in to Spotify to allow your app to access your account.
-> ℹ️ Note
-> 
-> You will most likely see a warning in the browser stating that this page is unsafe to visit. This is expected because the mod needs to create a local HTTPS server to detect when you successfully logged in. This server uses a self-signed SSL certificate which your device does not trust by default. It's perfectly safe in this case to ignore the warning and click "Proceed to 127.0.0.1" 
-> 
-> <img src="docs/browser.png" alt="Browser Warning" width="400"> 
+*In order to obtain refreshToken, the simplest way is to capture http packets on the app when logging in to the account. It is recommended to ask ai to get the most suitable way to obtain refresh_token for you.*
 
-### 3. Browse Your Playlists
 
-If all went well, you should now see your playlists in the mod!
+Search results are fetched online from BeatSaver. The Download button shows when a map is not installed locally.
 
-<img src="docs/search.png" alt="Browser Warning" width="400">
+For song titles and artists containing Japanese characters, the mod will attempt to generate romaji for additional searches. If the optional Kakasi adapter mod is installed, it provides higher-quality conversion; otherwise the fallback is kana-only.
 
-### Troubleshooting
+### Optional: Romaji Overrides
 
-#### The browser appears to load forever.
+If some names romanize poorly, you can provide overrides.
 
-Quit both the browser and the game. Open the browser manually first, then open the game.
+Create `/sdcard/ModData/com.beatgames.beatsaber/Mods/airbuds-search/romaji_overrides.txt` with one entry per line:
+
+```
+# lines starting with # are ignored
+<japanese>=<romaji>
+```
+
+The file should be UTF-8 encoded.
+
+### Optional: Kakasi Adapter Mod (Better Romaji)
+Install the separate GPL adapter mod `airbuds-search-kakasi` to enable Kakasi-based conversion.
+
+### Developer Docs
+
+See `README_DEV.md` for build, packaging, and adapter mod notes.
+

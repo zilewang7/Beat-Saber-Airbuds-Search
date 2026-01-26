@@ -1,47 +1,47 @@
 <bg xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance'
     xsi:noNamespaceSchemaLocation='https://raw.githubusercontent.com/RedBrumbler/Quest-BSML-Docs/gh-pages/schema.xsd'>
 
-    <vertical horizontal-fit="Unconstrained" spacing="2" child-control-height="false" child-align="UpperCenter" child-expand-height="false">
+    <vertical horizontal-fit="Unconstrained" spacing="1" child-control-height="false" child-align="UpperCenter" child-expand-height="false">
 
-        <!-- Spotify Account -->
-        <horizontal spacing="4">
-            <vertical horizontal-fit="Unconstrained">
-                <text text="Spotify Account"/>
-                <horizontal spacing="1">
-                    <!--
-                        TODO: Add profile image
-                        <image id="profileImageView_" preserve-aspect="true" pref-width="8" pref-height="8"/>
-                    -->
-                    <text id="profileTextView_" font-size="3" color="grey"/>
-                    <horizontal flex-width="100"/>
-                </horizontal>
-            </vertical>
-            <button id="loginOrLogoutButton_" on-click="onLoginOrLogoutButtonClicked"/>
-        </horizontal>
+        <!-- Airbuds Refresh Token -->
+        <vertical horizontal-fit="Unconstrained" pref-height="34" vertical-fit="PreferredSize" spacing="0">
+            <text text="Airbuds Refresh Token"/>
+            <text font-size="3" color="grey" text="Paste the refresh token from the Airbuds app to load your listening history."/>
+            <horizontal spacing="1" pad-top="1" pref-height="7">
+                <text-field id="refreshTokenTextField_" text="Refresh Token" pref-width="55" pref-height="6"/>
+                <icon-button id="refreshTokenPasteButton_" on-click="onPasteRefreshTokenButtonClicked" hover-hint="Paste" pref-width="8" pref-height="8"/>
+                <button id="refreshTokenClearButton_" text="Clear" on-click="onClearRefreshTokenButtonClicked" pref-height="6"/>
+            </horizontal>
+            <horizontal spacing="1" pref-height="6">
+                <text id="refreshTokenStatusTextView_" font-size="3" color="grey"/>
+                <button id="refreshTokenSaveButton_" text="Save" on-click="onSaveRefreshTokenButtonClicked" pref-height="6"/>
+            </horizontal>
+            <text font-size="2.5" color="#888888" text="In order to obtain refreshToken, the simplest way is to capture http packets on the app when logging in to the account. It is recommended to ask ai to get the most suitable way to obtain refresh_token for you." italics="true"/>
+        </vertical>
+
+        <!-- Kakasi Mod -->
+        <vertical horizontal-fit="Unconstrained" pref-height="12" vertical-fit="PreferredSize" spacing="0">
+            <horizontal spacing="4">
+                <text text="Airbuds Search Kakasi Mod"/>
+                <text id="kakasiStatusTextView_" font-size="3.5"/>
+            </horizontal>
+            <text font-size="3" color="grey" text="Enables better Japanese song/artist search by converting Japanese to romaji for additional search."/>
+        </vertical>
 
         <!-- Image Cache -->
-        <horizontal spacing="4" pad-right="4">
-            <vertical horizontal-fit="Unconstrained">
-                <horizontal>
-                    <text text="Image Cache"/>
-                    <text id="cacheSizeTextView_" color="magenta" font-size="3.5" font-align="Center"/>
-                    <horizontal flex-width="100"/>
-                </horizontal>
-                <text font-size="3" color="grey" text="The Image Cache is used to save images to local storage instead of downloading them every time they are needed."/>
-            </vertical>
-            <button id="clearCacheButton_" text="Clear Cache" on-click="onClearCacheButtonClicked"/>
+        <horizontal spacing="4" pad-right="4" pref-height="8">
+            <text text="Image Cache"/>
+            <text id="cacheSizeTextView_" color="magenta" font-size="3.5"/>
+            <horizontal flex-width="100"/>
+            <button id="clearCacheButton_" text="Clear" on-click="onClearCacheButtonClicked" pref-width="20"/>
         </horizontal>
 
-        <!-- Secure Authentication Token -->
-        <horizontal spacing="4">
-            <vertical horizontal-fit="Unconstrained">
-                <text text="Secure Authentication Token"/>
-                <horizontal spacing="1">
-                    <text text="Store the Spotify authentication token securely on this device by encrypting it with a PIN. You will be prompted to unlock it everytime you start the game. <color=#D32F2F>Disabling this would allow any other mod or app on your device to potentially access the authentication token!</color>" font-size="3" color="grey" rich-text="true"/>
-                    <horizontal flex-width="100"/>
-                </horizontal>
-            </vertical>
-            <checkbox text="" id="requirePinCheckbox_" on-change="onRequirePinCheckboxChanged" pref-width="45"/>
+        <!-- History Cache -->
+        <horizontal spacing="2" pad-right="4" pref-height="8">
+            <text text="History Cache" pref-width="22"/>
+            <text id="historyCacheSizeTextView_" color="magenta" font-size="3.5"/>
+            <dropdown-list-setting id="historyClearRangeDropdown_" text="" options="historyClearRangeOptions_" value="historyClearRangeValue_" pref-width="38" apply-on-change="true"/>
+            <button id="clearHistoryButton_" text="Clear" on-click="onClearHistoryButtonClicked" pref-width="20"/>
         </horizontal>
     </vertical>
 

@@ -8,9 +8,9 @@
 #include "Utils.hpp"
 #include "bsml/shared/BSML/Components/Backgroundable.hpp"
 
-using namespace SpotifySearch::UI;
+using namespace AirbudsSearch::UI;
 
-DEFINE_TYPE(SpotifySearch::UI, CustomSongTableViewCell);
+DEFINE_TYPE(AirbudsSearch::UI, CustomSongTableViewCell);
 
 void CustomSongTableViewCell::ctor() {
     INVOKE_BASE_CTOR(classof(HMUI::TableCell*));
@@ -82,7 +82,7 @@ void CustomSongTableViewCell::setSong(const SongDetailsCache::Song* const song) 
     Utils::getCoverImageSprite(songHash, [this, songHash](const UnityW<UnityEngine::Sprite> sprite) {
         // Check if the selected song has changed
         if (!song_ || song_->hash() != songHash) {
-            SpotifySearch::Log.warn("Cancelled sprite update");
+            AirbudsSearch::Log.warn("Cancelled sprite update");
             return;
         }
 
@@ -90,7 +90,7 @@ void CustomSongTableViewCell::setSong(const SongDetailsCache::Song* const song) 
         if (sprite) {
             image_->set_sprite(sprite);
         } else {
-            SpotifySearch::Log.warn("Failed loading cover image for song with hash: {}", songHash);
+            AirbudsSearch::Log.warn("Failed loading cover image for song with hash: {}", songHash);
         }
     });
 

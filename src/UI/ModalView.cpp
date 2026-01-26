@@ -5,9 +5,9 @@
 #include "assets.hpp"
 #include "Log.hpp"
 
-DEFINE_TYPE(SpotifySearch::UI, ModalView);
+DEFINE_TYPE(AirbudsSearch::UI, ModalView);
 
-namespace SpotifySearch::UI {
+namespace AirbudsSearch::UI {
 
 void ModalView::ctor() {
     isInitialized_ = false;

@@ -6,29 +6,29 @@
 #include "Log.hpp"
 #include "UI/TableViewCells/DownloadHistoryTableViewCell.hpp"
 
-DEFINE_TYPE(SpotifySearch::UI, DownloadHistoryTableViewDataSource);
+DEFINE_TYPE(AirbudsSearch::UI, DownloadHistoryTableViewDataSource);
 
-using namespace SpotifySearch::UI;
+using namespace AirbudsSearch::UI;
 
 HMUI::TableCell* DownloadHistoryTableViewDataSource::CellForIdx(HMUI::TableView* tableView, int idx) {
     auto tcd = tableView->DequeueReusableCellForIdentifier("DownloadHistoryTableViewDataSource");
-    DownloadHistoryTableViewCell* spotifyCell;
+    DownloadHistoryTableViewCell* cell;
     if (!tcd) {
         auto tableCell = UnityEngine::GameObject::New_ctor();
-        spotifyCell = tableCell->AddComponent<DownloadHistoryTableViewCell*>();
-        spotifyCell->set_interactable(true);
+        cell = tableCell->AddComponent<DownloadHistoryTableViewCell*>();
+        cell->set_interactable(true);
 
-        spotifyCell->set_reuseIdentifier("DownloadHistoryTableViewDataSource");
-        BSML::parse_and_construct(IncludedAssets::DownloadHistoryTableViewCell_bsml, spotifyCell->get_transform(), spotifyCell);
+        cell->set_reuseIdentifier("DownloadHistoryTableViewDataSource");
+        BSML::parse_and_construct(IncludedAssets::DownloadHistoryTableViewCell_bsml, cell->get_transform(), cell);
     } else {
-        spotifyCell = tcd->GetComponent<DownloadHistoryTableViewCell*>();
+        cell = tcd->GetComponent<DownloadHistoryTableViewCell*>();
     }
 
     const std::shared_ptr<DownloadHistoryItem> downloadHistoryItem = downloadHistoryItems_.at(idx);
 
-    spotifyCell->setDownloadHistoryItem(downloadHistoryItem);
+    cell->setDownloadHistoryItem(downloadHistoryItem);
 
-    return spotifyCell;
+    return cell;
 }
 
 int DownloadHistoryTableViewDataSource::NumberOfCells() {

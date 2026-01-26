@@ -30,7 +30,7 @@ def main():
         process = subprocess.run([
             'adb',
             'pull',
-            '/sdcard/ModData/com.beatgames.beatsaber/Modloader/mods/libspotify-search.so',
+            '/sdcard/ModData/com.beatgames.beatsaber/Modloader/mods/libairbuds-search.so',
         ], cwd=temp_dir, stderr=subprocess.STDOUT)
 
     total_paths: List[Path] = []
@@ -40,8 +40,8 @@ def main():
             # Pull the logs from the device
             log_file_dir = Path('/sdcard/ModData/com.beatgames.beatsaber/logs2')
             log_file_paths = [
-                log_file_dir / 'spotify-search.log',
-                log_file_dir / 'spotify-search.1.log'
+                log_file_dir / 'airbuds-search.log',
+                log_file_dir / 'airbuds-search.1.log'
             ]
             for path in log_file_paths:
                 process = subprocess.run([

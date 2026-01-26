@@ -11,13 +11,13 @@
 #include "UI/ViewControllers/FilterOptionsViewController.hpp"
 #include "Log.hpp"
 #include "Utils.hpp"
-#include "UI/FlowCoordinators/SpotifySearchFlowCoordinator.hpp"
+#include "UI/FlowCoordinators/AirbudsSearchFlowCoordinator.hpp"
 #include "UI/ViewControllers/MainViewController.hpp"
 #include "main.hpp"
 
-DEFINE_TYPE(SpotifySearch::UI::ViewControllers, FilterOptionsViewController);
+DEFINE_TYPE(AirbudsSearch::UI::ViewControllers, FilterOptionsViewController);
 
-using namespace SpotifySearch::UI::ViewControllers;
+using namespace AirbudsSearch::UI::ViewControllers;
 
 void FilterOptionsViewController::DidActivate(bool firstActivation, bool addedToHierarchy, bool screenSystemDisabling) {
 
@@ -59,7 +59,7 @@ void FilterOptionsViewController::onFilterChanged() {
 
             // Notify the main view controller
             UnityW<HMUI::FlowCoordinator> parentFlow = BSML::Helpers::GetMainFlowCoordinator()->YoungestChildFlowCoordinatorOrSelf();
-            auto flow = parentFlow.cast<SpotifySearch::UI::FlowCoordinators::SpotifySearchFlowCoordinator>();
+            auto flow = parentFlow.cast<AirbudsSearch::UI::FlowCoordinators::AirbudsSearchFlowCoordinator>();
             auto mainViewController = flow->mainViewController_;
             mainViewController->setFilter(customSongFilter_);
         });

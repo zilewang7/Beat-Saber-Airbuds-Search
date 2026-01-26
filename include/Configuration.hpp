@@ -1,8 +1,11 @@
 #pragma once
 
+#include <string>
+#include <string_view>
+
 #include "beatsaber-hook/shared/config/config-utils.hpp"
 
-namespace SpotifySearch {
+namespace AirbudsSearch {
 
 // Stores the ID and version of our mod, and is sent to
 // the modloader upon startup
@@ -14,8 +17,9 @@ Configuration& getConfig();
 
 std::filesystem::path getDataDirectory();
 
-bool isSecureAuthenticationTokenRequired();
-
-void setIsSecureAuthenticationTokenRequired(bool value);
+bool hasAirbudsRefreshToken();
+std::string getAirbudsRefreshToken();
+void setAirbudsRefreshToken(std::string_view token);
+void clearAirbudsRefreshToken();
 
 }

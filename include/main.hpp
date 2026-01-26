@@ -16,17 +16,17 @@
 
 #include "_config.hpp"
 
-#include "Spotify/SpotifyClient.hpp"
-#include "UI/FlowCoordinators/SpotifySearchFlowCoordinator.hpp"
+#include "Airbuds/AirbudsClient.hpp"
+#include "UI/FlowCoordinators/AirbudsSearchFlowCoordinator.hpp"
 
-namespace SpotifySearch {
+namespace AirbudsSearch {
 
-inline bool returnToSpotifySearch = false;
+inline bool returnToAirbudsSearch = false;
 
-inline std::shared_ptr<spotify::Client> spotifyClient;
+inline std::shared_ptr<airbuds::Client> airbudsClient;
 
-inline SafePtrUnity<SpotifySearch::UI::FlowCoordinators::SpotifySearchFlowCoordinator> spotifySearchFlowCoordinator_;
+inline SafePtrUnity<AirbudsSearch::UI::FlowCoordinators::AirbudsSearchFlowCoordinator> airbudsSearchFlowCoordinator_;
 
-void openSpotifySearchFlowCoordinator();
+void openAirbudsSearchFlowCoordinator();
 
 }

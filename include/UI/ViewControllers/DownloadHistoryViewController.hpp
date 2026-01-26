@@ -5,7 +5,7 @@
 #include "custom-types/shared/macros.hpp"
 #include "song-details/shared/SongDetails.hpp"
 
-#include "Spotify/SpotifyClient.hpp"
+#include "Airbuds/AirbudsClient.hpp"
 
 #if HOT_RELOAD
 #include "bsml/shared/BSML/ViewControllers/HotReloadViewController.hpp"
@@ -15,7 +15,7 @@ using BaseViewController = BSML::HotReloadViewController;
 using BaseViewController = HMUI::ViewController;
 #endif
 
-DECLARE_CLASS_CODEGEN_INTERFACES(SpotifySearch::UI::ViewControllers, DownloadHistoryViewController, BaseViewController) {
+DECLARE_CLASS_CODEGEN_INTERFACES(AirbudsSearch::UI::ViewControllers, DownloadHistoryViewController, BaseViewController) {
 
     DECLARE_OVERRIDE_METHOD_MATCH(void, DidActivate, &HMUI::ViewController::DidActivate, bool isFirstActivation, bool addedToHierarchy, bool screenSystemDisabling);
 

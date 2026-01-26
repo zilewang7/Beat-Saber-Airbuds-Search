@@ -1,6 +1,10 @@
+#include <cctype>
+
 #include "HMUI/CurvedTextMeshPro.hpp"
 #include "HMUI/Touchable.hpp"
+#include "beatsaber-hook/shared/utils/il2cpp-utils.hpp"
 #include "bsml/shared/BSML/Components/ExternalComponents.hpp"
+#include <bsml/shared/BSML/Components/ButtonIconImage.hpp>
 #include <UnityEngine/Mesh.hpp>
 #include <UnityEngine/Resources.hpp>
 #include <VRUIControls/VRGraphicRaycaster.hpp>
@@ -8,22 +12,55 @@
 #include <bsml/shared/BSML/Tags/ModalTag.hpp>
 #include <bsml/shared/Helpers/delegates.hpp>
 #include <bsml/shared/Helpers/getters.hpp>
+#include <scotland2/shared/loader.hpp>
+#include <web-utils/shared/WebUtils.hpp>
+#include <fstream>
 
+#include "Configuration.hpp"
+#include "SpriteCache.hpp"
+#include "Utils.hpp"
 #include "assets.hpp"
-#include "UI/FlowCoordinators/SpotifySearchFlowCoordinator.hpp"
+#include "UI/FlowCoordinators/AirbudsSearchFlowCoordinator.hpp"
 #include "UI/ViewControllers/SettingsViewController.hpp"
 #include "main.hpp"
 
-DEFINE_TYPE(SpotifySearch::UI::ViewControllers, SettingsViewController);
+DEFINE_TYPE(AirbudsSearch::UI::ViewControllers, SettingsViewController);
 
-using namespace SpotifySearch::UI::ViewControllers;
+using namespace AirbudsSearch::UI::ViewControllers;
+
+namespace {
+
+std::string trimAscii(const std::string& text) {
+    size_t start = 0;
+    while (start < text.size() && std::isspace(static_cast<unsigned char>(text[start]))) {
+        ++start;
+    }
+    if (start >= text.size()) {
+        return "";
+    }
+    size_t end = text.size() - 1;
+    while (end > start && std::isspace(static_cast<unsigned char>(text[end]))) {
+        --end;
+    }
+    return text.substr(start, end - start + 1);
+}
+
+}
 
 void SettingsViewController::DidActivate(const bool isFirstActivation, bool addedToHierarchy, bool screenSystemDisabling) {
     if (isFirstActivation) {
+        // Initialize dropdown options
+        historyClearRangeOptions_ = ListW<StringW>::New();
+        historyClearRangeOptions_->Add("Older than 1 day");
+        historyClearRangeOptions_->Add("Older than 1 week");
+        historyClearRangeOptions_->Add("Older than 1 month");
+        historyClearRangeOptions_->Add("All entries");
+        historyClearRangeValue_ = "Older than 1 week";
+
         BSML::parse_and_construct(IncludedAssets::SettingsViewController_bsml, this->get_transform(), this);
 
         isClearingCache_ = false;
-        showModalOnChange_ = true;
+        isClearingHistory_ = false;
 
 #if HOT_RELOAD
         fileWatcher->filePath = "/sdcard/SettingsViewController.bsml";
@@ -36,62 +73,41 @@ void SettingsViewController::DidActivate(const bool isFirstActivation, bool adde
 }
 
 void SettingsViewController::PostParse() {
+    static constexpr std::string_view KEY_CLIPBOARD_ICON = "clipboard-icon";
+    UnityW<UnityEngine::Sprite> sprite = SpriteCache::getInstance().get(KEY_CLIPBOARD_ICON);
+    if (!sprite) {
+        sprite = BSML::Lite::ArrayToSprite(IncludedAssets::clipboard_icon_png);
+        SpriteCache::getInstance().add(KEY_CLIPBOARD_ICON, sprite);
+    }
+    refreshTokenPasteButton_->GetComponent<BSML::ButtonIconImage*>()->SetIcon(sprite);
+    static constexpr float scale = 1.5f;
+    refreshTokenPasteButton_->get_transform()->Find("Content/Icon")->set_localScale({scale, scale, scale});
+    Utils::removeRaycastFromButtonIcon(refreshTokenPasteButton_);
+
     refresh();
 }
 
 void SettingsViewController::refresh() {
-    // Spotify account
-    // profileImageView_->set_sprite(Utils::createSimpleSprite());
-    refreshSpotifyAccountStatus();
-
-    // Image cache
+    refreshAirbudsTokenStatus();
+    refreshKakasiStatus();
     refreshCacheSizeStatus();
-
-    // Secure authentication token
-    showModalOnChange_ = false;
-    requirePinCheckbox_->set_Value(isSecureAuthenticationTokenRequired());
-    showModalOnChange_ = true;
+    refreshHistoryCacheSizeStatus();
 }
 
-void SettingsViewController::refreshSpotifyAccountStatus() {
-
-    const std::function<void()> onLoggedOut = [this]() {
-        profileTextView_->set_text("You are not logged in.");
-        loginOrLogoutButton_->get_transform()->Find("Content/Text")->GetComponent<HMUI::CurvedTextMeshPro*>()->set_text("Log in");
-    };
-
-    const std::function<void(const spotify::User&)> onLoggedIn = [this](const spotify::User& user) {
-        profileTextView_->set_text(std::format("Logged in as <color=#FF00FF>{}</color>.", user.displayName));
-        loginOrLogoutButton_->get_transform()->Find("Content/Text")->GetComponent<HMUI::CurvedTextMeshPro*>()->set_text("Log out");
-    };
-
-    onLoggedOut();
-
-    if (!SpotifySearch::spotifyClient->isAuthenticated()) {
-        return;
+void SettingsViewController::refreshAirbudsTokenStatus() {
+    const std::string token = AirbudsSearch::getAirbudsRefreshToken();
+    refreshTokenTextField_->set_text(token);
+    if (token.empty()) {
+        refreshTokenStatusTextView_->set_text("No refresh token saved.");
+    } else {
+        refreshTokenStatusTextView_->set_text("Refresh token saved.");
     }
-
-    std::thread([this, onLoggedIn]() {
-        try {
-            const spotify::User user = SpotifySearch::spotifyClient->getUser();
-            BSML::MainThreadScheduler::Schedule([this, onLoggedIn, user]() {
-                onLoggedIn(user);
-                /*Utils::getImageAsSprite(user.imageUrl, [this](const UnityW<UnityEngine::Sprite> sprite) {
-                if (sprite) {
-                    profileImageView_->set_sprite(sprite);
-                }
-            });*/
-            });
-        } catch (const std::exception& exception) {
-            SpotifySearch::Log.error("Failed to get user: {}", exception.what());
-        }
-    }).detach();
 }
 
 void SettingsViewController::refreshCacheSizeStatus() {
     cacheSizeTextView_->set_text("(Calculating Usage...)");
     std::thread([this]() {
-        const uintmax_t cacheSizeInBytes = getDirectorySizeInBytes(SpotifySearch::getDataDirectory() / "cache");
+        const uintmax_t cacheSizeInBytes = getDirectorySizeInBytes(AirbudsSearch::getDataDirectory() / "cache");
         BSML::MainThreadScheduler::Schedule([this, cacheSizeInBytes]() {
             cacheSizeTextView_->set_text(std::format("({} Used)", getHumanReadableSize(cacheSizeInBytes)));
 
@@ -106,24 +122,54 @@ void SettingsViewController::refreshCacheSizeStatus() {
     }).detach();
 }
 
-void SettingsViewController::onLoginOrLogoutButtonClicked() {
-    // Check if we are logged in
-    if (SpotifySearch::spotifyClient->isAuthenticated()) {
-        // Ask the user to confirm
-        modalView_->setMessage("Are you sure you want to log out?");
-        modalView_->setPrimaryButton(true, "Continue", [this]() {
-            SpotifySearch::spotifyClient->logout();
-            refreshSpotifyAccountStatus();
-            SpotifySearch::spotifySearchFlowCoordinator_.clear();
-            modalView_->hide(true);
-        });
-        modalView_->setSecondaryButton(true, "Cancel", nullptr);
+void SettingsViewController::onPasteRefreshTokenButtonClicked() {
+    static auto UnityEngine_GUIUtility_get_systemCopyBuffer = il2cpp_utils::resolve_icall<StringW>("UnityEngine.GUIUtility::get_systemCopyBuffer");
+    const std::string text = UnityEngine_GUIUtility_get_systemCopyBuffer();
+    refreshTokenTextField_->set_text(text);
+}
+
+void SettingsViewController::onClearRefreshTokenButtonClicked() {
+    refreshTokenTextField_->set_text("");
+    AirbudsSearch::clearAirbudsRefreshToken();
+    if (AirbudsSearch::airbudsClient) {
+        AirbudsSearch::airbudsClient->resetAirbudsCredentials();
+    }
+    refreshAirbudsTokenStatus();
+    modalView_->setMessage("Refresh token cleared.");
+    modalView_->setPrimaryButton(false, "", nullptr);
+    modalView_->setSecondaryButton(true, "OK", nullptr);
+    modalView_->show();
+}
+
+void SettingsViewController::onSaveRefreshTokenButtonClicked() {
+    const std::string trimmed = trimAscii(refreshTokenTextField_->get_text());
+    if (trimmed.empty()) {
+        refreshTokenTextField_->set_text("");
+        AirbudsSearch::clearAirbudsRefreshToken();
+        if (AirbudsSearch::airbudsClient) {
+            AirbudsSearch::airbudsClient->resetAirbudsCredentials();
+        }
+        refreshAirbudsTokenStatus();
+        modalView_->setMessage("Refresh token cleared.");
+        modalView_->setPrimaryButton(false, "", nullptr);
+        modalView_->setSecondaryButton(true, "OK", nullptr);
         modalView_->show();
         return;
     }
 
-    // Open main flow coordinator to start login flow
-    SpotifySearch::openSpotifySearchFlowCoordinator();
+    AirbudsSearch::setAirbudsRefreshToken(trimmed);
+    if (AirbudsSearch::airbudsClient) {
+        AirbudsSearch::airbudsClient->resetAirbudsCredentials();
+    }
+    refreshAirbudsTokenStatus();
+    modalView_->setMessage("Refresh token saved.");
+    modalView_->setPrimaryButton(false, "", nullptr);
+    modalView_->setSecondaryButton(true, "OK", nullptr);
+    modalView_->show();
+
+    if (AirbudsSearch::hasAirbudsRefreshToken()) {
+        AirbudsSearch::UI::FlowCoordinators::AirbudsSearchFlowCoordinator::reopen();
+    }
 }
 
 void SettingsViewController::onClearCacheButtonClicked() {
@@ -135,7 +181,7 @@ void SettingsViewController::onClearCacheButtonClicked() {
     cacheSizeTextView_->set_text("(Clearing...)");
 
     std::thread([this]() {
-        std::filesystem::remove_all(SpotifySearch::getDataDirectory() / "cache");
+        std::filesystem::remove_all(AirbudsSearch::getDataDirectory() / "cache");
         isClearingCache_ = false;
         BSML::MainThreadScheduler::Schedule([this]() {
             clearCacheButton_->set_interactable(true);
@@ -171,38 +217,158 @@ std::string SettingsViewController::getHumanReadableSize(const uintmax_t bytes) 
     return std::format("{:.1f} {}", size, suffixes[i]);
 }
 
-void SettingsViewController::onRequirePinCheckboxChanged() {
-    if (!showModalOnChange_) {
+void SettingsViewController::refreshKakasiStatus() {
+    CModInfo modInfo{"airbuds-search-kakasi", "0.0.0", 0};
+    CModResult mod = modloader_get_mod(&modInfo, MatchType_IdOnly);
+    if (mod.handle) {
+        kakasiStatusTextView_->set_text("<color=green>(Loaded)</color>");
+    } else {
+        kakasiStatusTextView_->set_text("<color=yellow>(Not Installed)</color>");
+    }
+}
+
+void SettingsViewController::refreshHistoryCacheSizeStatus() {
+    historyCacheSizeTextView_->set_text("(Calculating...)");
+    std::thread([this]() {
+        const std::filesystem::path cachePath = AirbudsSearch::getDataDirectory() / "recently_played_cache.json";
+        uintmax_t sizeInBytes = 0;
+        size_t entryCount = 0;
+
+        if (std::filesystem::exists(cachePath)) {
+            sizeInBytes = std::filesystem::file_size(cachePath);
+
+            std::ifstream file(cachePath, std::ios::binary);
+            if (file.is_open()) {
+                std::string data((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
+                rapidjson::Document doc;
+                doc.Parse(data.c_str());
+                if (doc.IsObject() && doc.HasMember("tracks") && doc["tracks"].IsArray()) {
+                    entryCount = doc["tracks"].GetArray().Size();
+                }
+            }
+        }
+
+        BSML::MainThreadScheduler::Schedule([this, sizeInBytes, entryCount]() {
+            historyCacheSizeTextView_->set_text(std::format("({} entries, {})", entryCount, getHumanReadableSize(sizeInBytes)));
+
+            const bool clearing = isClearingHistory_.load();
+            clearHistoryButton_->set_interactable(!clearing);
+        });
+    }).detach();
+}
+
+void SettingsViewController::onClearHistoryButtonClicked() {
+    const std::string selectedRange = historyClearRangeValue_;
+    if (selectedRange == "Older than 1 day") {
+        clearHistoryOlderThan(std::chrono::hours(1 * 24));
+    } else if (selectedRange == "Older than 1 week") {
+        clearHistoryOlderThan(std::chrono::hours(7 * 24));
+    } else if (selectedRange == "Older than 1 month") {
+        clearHistoryOlderThan(std::chrono::hours(30 * 24));
+    } else if (selectedRange == "All entries") {
+        clearAllHistory();
+    }
+}
+
+void SettingsViewController::clearHistoryOlderThan(std::chrono::hours age) {
+    if (isClearingHistory_) {
         return;
     }
+    isClearingHistory_ = true;
+    historyCacheSizeTextView_->set_text("(Clearing...)");
+    clearHistoryButton_->set_interactable(false);
 
-    // Immediately reset the checkbox
-    BSML::MainThreadScheduler::ScheduleNextFrame([this]() {
-        showModalOnChange_ = false;
-        requirePinCheckbox_->set_Value(!requirePinCheckbox_->get_Value());
-        showModalOnChange_ = true;
-    });
+    std::thread([this, age]() {
+        const std::filesystem::path cachePath = AirbudsSearch::getDataDirectory() / "recently_played_cache.json";
 
-    modalView_->setMessage("Changing this option will require logging in to Spotify again. Are you sure you want to continue?");
-    modalView_->setPrimaryButton(true, "Continue", [this](){
-        // Update the checkbox to the intended state
-        showModalOnChange_ = false;
-        requirePinCheckbox_->set_Value(!requirePinCheckbox_->get_Value());
-        showModalOnChange_ = true;
+        if (!std::filesystem::exists(cachePath)) {
+            isClearingHistory_ = false;
+            BSML::MainThreadScheduler::Schedule([this]() {
+                refreshHistoryCacheSizeStatus();
+            });
+            return;
+        }
 
-        // Dismiss modal
-        modalView_->hide(true);
+        std::ifstream inFile(cachePath, std::ios::binary);
+        if (!inFile.is_open()) {
+            isClearingHistory_ = false;
+            BSML::MainThreadScheduler::Schedule([this]() {
+                refreshHistoryCacheSizeStatus();
+            });
+            return;
+        }
 
-        // Update config
-        setIsSecureAuthenticationTokenRequired(requirePinCheckbox_->get_Value());
+        std::string data((std::istreambuf_iterator<char>(inFile)), std::istreambuf_iterator<char>());
+        inFile.close();
 
-        // Logout of Spotify
-        SpotifySearch::spotifyClient->logout();
-        refreshSpotifyAccountStatus();
+        rapidjson::Document doc;
+        doc.Parse(data.c_str());
 
-        // Reset the flow coordinator to trigger the login flow the next time we open it
-        SpotifySearch::UI::FlowCoordinators::SpotifySearchFlowCoordinator::reset();
-    });
-    modalView_->setSecondaryButton(true, "Cancel", nullptr);
-    modalView_->show();
+        if (!doc.IsObject() || !doc.HasMember("tracks") || !doc["tracks"].IsArray()) {
+            isClearingHistory_ = false;
+            BSML::MainThreadScheduler::Schedule([this]() {
+                refreshHistoryCacheSizeStatus();
+            });
+            return;
+        }
+
+        const auto now = std::chrono::system_clock::now();
+        const auto cutoffTime = std::chrono::duration_cast<std::chrono::milliseconds>(
+            (now - age).time_since_epoch()
+        );
+
+        rapidjson::Value newTracks(rapidjson::kArrayType);
+        auto& allocator = doc.GetAllocator();
+
+        for (const auto& track : doc["tracks"].GetArray()) {
+            if (!track.IsObject()) {
+                continue;
+            }
+            int64_t playedAtMs = 0;
+            if (track.HasMember("playedAtMs") && track["playedAtMs"].IsInt64()) {
+                playedAtMs = track["playedAtMs"].GetInt64();
+            }
+            if (playedAtMs >= cutoffTime.count()) {
+                rapidjson::Value trackCopy;
+                trackCopy.CopyFrom(track, allocator);
+                newTracks.PushBack(trackCopy, allocator);
+            }
+        }
+
+        doc["tracks"] = newTracks;
+
+        rapidjson::StringBuffer buffer;
+        rapidjson::Writer<rapidjson::StringBuffer> writer(buffer);
+        doc.Accept(writer);
+
+        std::ofstream outFile(cachePath, std::ios::binary | std::ios::trunc);
+        if (outFile.is_open()) {
+            outFile.write(buffer.GetString(), buffer.GetSize());
+        }
+
+        isClearingHistory_ = false;
+        BSML::MainThreadScheduler::Schedule([this]() {
+            refreshHistoryCacheSizeStatus();
+        });
+    }).detach();
+}
+
+void SettingsViewController::clearAllHistory() {
+    if (isClearingHistory_) {
+        return;
+    }
+    isClearingHistory_ = true;
+    historyCacheSizeTextView_->set_text("(Clearing...)");
+    clearHistoryButton_->set_interactable(false);
+
+    std::thread([this]() {
+        const std::filesystem::path cachePath = AirbudsSearch::getDataDirectory() / "recently_played_cache.json";
+        if (std::filesystem::exists(cachePath)) {
+            std::filesystem::remove(cachePath);
+        }
+        isClearingHistory_ = false;
+        BSML::MainThreadScheduler::Schedule([this]() {
+            refreshHistoryCacheSizeStatus();
+        });
+    }).detach();
 }

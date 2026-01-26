@@ -3,12 +3,15 @@
 #include "Utils.hpp"
 #include "Configuration.hpp"
 
-namespace SpotifySearch {
+namespace AirbudsSearch {
 
 struct CustomSongFilter {
 
-    CustomSongFilter() {
-        difficulties_.push_back(Utils::getMapDifficultyFromString(getConfig().config["filter"]["difficulty"].GetString()));
+    CustomSongFilter() : includeDownloadedSongs_(true) {
+        const std::string difficulty = getConfig().config["filter"]["difficulty"].GetString();
+        if (difficulty != "Any") {
+            difficulties_.push_back(Utils::getMapDifficultyFromString(difficulty));
+        }
     }
 
     std::vector<SongDetailsCache::MapDifficulty> difficulties_;

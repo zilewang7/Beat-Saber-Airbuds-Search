@@ -51,7 +51,7 @@ include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/strip.cmake)
 # stop symbols leaking
 # TODO: Fix
 # add_link_options(-Wl, --exclude-libs, ALL)
-project(spotify-search VERSION ${PACKAGE_VERSION})
+project(airbuds-search VERSION ${PACKAGE_VERSION})
 
 add_compile_definitions(MOD_ID="${CMAKE_PROJECT_NAME}")
 add_compile_definitions(VERSION="${CMAKE_PROJECT_VERSION}")
@@ -73,7 +73,7 @@ add_library(
 add_subdirectory(third-party)
 
 # for inline hook
-target_link_libraries(${CMAKE_PROJECT_NAME} PRIVATE log crypto ssl httplib)
+target_link_libraries(${CMAKE_PROJECT_NAME} PRIVATE log crypto ssl httplib dl)
 
 target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE ${INCLUDE_DIR})
 target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE ${SHARED_DIR})

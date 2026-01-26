@@ -2,7 +2,7 @@
 
 #include "UnityEngine/Sprite.hpp"
 
-namespace SpotifySearch {
+namespace AirbudsSearch {
 
 class SpriteCache {
 

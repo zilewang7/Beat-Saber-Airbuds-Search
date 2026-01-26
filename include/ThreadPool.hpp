@@ -5,7 +5,7 @@
 
 #include "Log.hpp"
 
-namespace SpotifySearch {
+namespace AirbudsSearch {
 
 class ThreadPool {
     public:
@@ -38,4 +38,4 @@ class ThreadPool {
     void onJobFinished(const Job& job);
 };
 
-}// namespace SpotifySearch
+}// namespace AirbudsSearch

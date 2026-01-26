@@ -16,7 +16,7 @@
 #include "custom-types/shared/macros.hpp"
 #include "song-details/shared/SongDetails.hpp"
 
-DECLARE_CLASS_CODEGEN(SpotifySearch::UI, CustomSongTableViewCell, HMUI::TableCell) {
+DECLARE_CLASS_CODEGEN(AirbudsSearch::UI, CustomSongTableViewCell, HMUI::TableCell) {
 
     DECLARE_CTOR(ctor);
 

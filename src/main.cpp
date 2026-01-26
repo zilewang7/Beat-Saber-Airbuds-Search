@@ -11,13 +11,14 @@
 #include "BeatSaverUtils.hpp"
 #include "Configuration.hpp"
 #include "Log.hpp"
-#include "Spotify/SpotifyClient.hpp"
-#include "UI/FlowCoordinators/SpotifySearchFlowCoordinator.hpp"
+#include "Airbuds/AirbudsClient.hpp"
+#include "UI/FlowCoordinators/AirbudsSearchFlowCoordinator.hpp"
+#include "UI/GameplaySetupTab.hpp"
 #include "UI/ViewControllers/SettingsViewController.hpp"
 #include "main.hpp"
 
-using SpotifySearch::UI::FlowCoordinators::SpotifySearchFlowCoordinator;
-using namespace SpotifySearch;
+using AirbudsSearch::UI::FlowCoordinators::AirbudsSearchFlowCoordinator;
+using namespace AirbudsSearch;
 
 // Called at the early stages of game loading
 MOD_EXTERN_FUNC void setup(CModInfo* info) noexcept {
@@ -25,34 +26,34 @@ MOD_EXTERN_FUNC void setup(CModInfo* info) noexcept {
     getConfig().Load();
 
     try {
-        std::filesystem::rename("/sdcard/ModData/com.beatgames.beatsaber/logs2/spotify-search.log", "/sdcard/ModData/com.beatgames.beatsaber/logs2/spotify-search.1.log");
+        std::filesystem::rename("/sdcard/ModData/com.beatgames.beatsaber/logs2/airbuds-search.log", "/sdcard/ModData/com.beatgames.beatsaber/logs2/airbuds-search.1.log");
     } catch (const std::filesystem::filesystem_error& error) {
-        SpotifySearch::Log.info("Failed to rotate log: {}", error.what());
+        AirbudsSearch::Log.info("Failed to rotate log: {}", error.what());
     }
 
     // Initialize logging. This enables saving logs to disk.
-    Paper::Logger::RegisterFileContextId("spotify-search");
+    Paper::Logger::RegisterFileContextId("airbuds-search");
 
-    SpotifySearch::Log.info("Version: {}", info->version);
+    AirbudsSearch::Log.info("Version: {}", info->version);
 
     // Capture fatal logs from logcat to get crash stacks
     std::thread([]() {
-        SpotifySearch::Log.info("Logcat thread started");
+        AirbudsSearch::Log.info("Logcat thread started");
 
         const char* command = "logcat *:F";
 
         std::unique_ptr<FILE, decltype(&pclose)> pipe(popen(command, "r"), pclose);
         if (!pipe) {
-            SpotifySearch::Log.info("Logcat thread failed!");
+            AirbudsSearch::Log.info("Logcat thread failed!");
             return;
         }
 
         char buffer[512];
         while (fgets(buffer, sizeof(buffer), pipe.get()) != nullptr) {
             const std::string line(buffer);
-            SpotifySearch::Log.info("[LOGCAT] {}", line);
+            AirbudsSearch::Log.info("[LOGCAT] {}", line);
         }
-        SpotifySearch::Log.info("Logcat thread stopped!");
+        AirbudsSearch::Log.info("Logcat thread stopped!");
     }).detach();
 
     if (!getConfig().config.HasMember("filter")) {
@@ -64,30 +65,32 @@ MOD_EXTERN_FUNC void setup(CModInfo* info) noexcept {
         getConfig().config["filter"].AddMember("difficulty", "Normal", getConfig().config.GetAllocator());
     }
 
-    if (!getConfig().config.HasMember("requirePassword")) {
-        // If the config doesn't contain this key, it means the user just updated to this version. By default, this
-        // should be enabled, but if the user is updating and already has an unencrypted token stored, let's just
-        // set this to false to keep it in sync. They can add a PIN in the settings if they want.
-        SpotifySearch::Log.warn("Config was missing key: requirePassword");
-        bool didSetValue = false;
-        if (!SpotifySearch::spotifyClient) {
-            SpotifySearch::spotifyClient = std::make_shared<spotify::Client>();
-            try {
-                SpotifySearch::spotifyClient->login(spotify::Client::getAuthTokenPath());
-                if (SpotifySearch::spotifyClient->isAuthenticated()) {
-                    SpotifySearch::Log.info("User is already authenticated. Setting requirePassword = false");
-                    getConfig().config.AddMember("requirePassword", false, getConfig().config.GetAllocator());
-                    didSetValue = true;
-                }
-            } catch (const std::exception& exception) {
-                SpotifySearch::Log.warn("Failed to authenticate: {}", exception.what());
-            }
-        }
+    auto& config = getConfig().config;
+    if (!config.HasMember("airbuds")) {
+        rapidjson::Value airbudsJson;
+        airbudsJson.SetObject();
+        airbudsJson.AddMember("refreshToken", "", config.GetAllocator());
+        config.AddMember("airbuds", airbudsJson, config.GetAllocator());
+    } else if (!config["airbuds"].IsObject()) {
+        config["airbuds"].SetObject();
+    }
+    if (!config["airbuds"].HasMember("refreshToken")) {
+        config["airbuds"].AddMember("refreshToken", "", config.GetAllocator());
+    }
 
-        if (!didSetValue) {
-            SpotifySearch::Log.info("Could not authenticate. Setting requirePassword = true");
-            getConfig().config.AddMember("requirePassword", true, getConfig().config.GetAllocator());
+    if (config.HasMember("thirdParty") && config["thirdParty"].IsObject()) {
+        const auto& thirdParty = config["thirdParty"];
+        if (config["airbuds"]["refreshToken"].IsString()
+            && std::string(config["airbuds"]["refreshToken"].GetString()).empty()
+            && thirdParty.HasMember("refreshToken")
+            && thirdParty["refreshToken"].IsString()) {
+            config["airbuds"]["refreshToken"].SetString(thirdParty["refreshToken"].GetString(), config.GetAllocator());
         }
+        config.RemoveMember("thirdParty");
+    }
+
+    if (config.HasMember("requirePassword")) {
+        config.RemoveMember("requirePassword");
     }
 
     getConfig().Write();
@@ -102,9 +105,9 @@ MAKE_HOOK_MATCH(
     HMUI::ViewController::AnimationDirection animationDirection,
     System::Action* finishedCallback,
     bool immediately) {
-    SpotifySearch::Log.info(
+    AirbudsSearch::Log.info(
         "onDismissFlowController: return = {} self = {} ({}) fc = {} ({})",
-        SpotifySearch::returnToSpotifySearch,
+        AirbudsSearch::returnToAirbudsSearch,
         static_cast<void*>(self),
         self->get_gameObject()->get_name(),
         static_cast<void*>(flowCoordinator),
@@ -113,26 +116,26 @@ MAKE_HOOK_MATCH(
     // Call the original function
     onDismissFlowCoordinator(self, flowCoordinator, animationDirection, finishedCallback, true);
 
-    // Return to the Spotify Search flow coordinator
-    if (SpotifySearch::returnToSpotifySearch) {
+    // Return to the Airbuds Search flow coordinator
+    if (AirbudsSearch::returnToAirbudsSearch) {
         auto currentFlowCoordinator = BSML::Helpers::GetMainFlowCoordinator()->YoungestChildFlowCoordinatorOrSelf();
-        UnityW<SpotifySearch::UI::FlowCoordinators::SpotifySearchFlowCoordinator> spotifySearchFlowCoordinator = UnityEngine::Resources::FindObjectsOfTypeAll<SpotifySearch::UI::FlowCoordinators::SpotifySearchFlowCoordinator*>()->FirstOrDefault();
-        if (spotifySearchFlowCoordinator) {
-            currentFlowCoordinator->PresentFlowCoordinator(spotifySearchFlowCoordinator, nullptr, HMUI::ViewController::AnimationDirection::Horizontal, true, false);
+        UnityW<AirbudsSearch::UI::FlowCoordinators::AirbudsSearchFlowCoordinator> airbudsSearchFlowCoordinator = UnityEngine::Resources::FindObjectsOfTypeAll<AirbudsSearch::UI::FlowCoordinators::AirbudsSearchFlowCoordinator*>()->FirstOrDefault();
+        if (airbudsSearchFlowCoordinator) {
+            currentFlowCoordinator->PresentFlowCoordinator(airbudsSearchFlowCoordinator, nullptr, HMUI::ViewController::AnimationDirection::Horizontal, true, false);
         }
     }
 };
 
-void SpotifySearch::openSpotifySearchFlowCoordinator() {
+void AirbudsSearch::openAirbudsSearchFlowCoordinator() {
     // Create the main flow coordinator
-    if (!SpotifySearch::spotifySearchFlowCoordinator_) {
-        SpotifySearch::spotifySearchFlowCoordinator_ = BSML::Helpers::CreateFlowCoordinator<SpotifySearch::UI::FlowCoordinators::SpotifySearchFlowCoordinator*>();
+    if (!AirbudsSearch::airbudsSearchFlowCoordinator_) {
+        AirbudsSearch::airbudsSearchFlowCoordinator_ = BSML::Helpers::CreateFlowCoordinator<AirbudsSearch::UI::FlowCoordinators::AirbudsSearchFlowCoordinator*>();
     }
 
     HMUI::FlowCoordinator* parentFlow = BSML::Helpers::GetMainFlowCoordinator()->YoungestChildFlowCoordinatorOrSelf();
 
     if (parentFlow) {
-        parentFlow->PresentFlowCoordinator(SpotifySearch::spotifySearchFlowCoordinator_.ptr(), nullptr, HMUI::ViewController::AnimationDirection::Horizontal, false, false);
+        parentFlow->PresentFlowCoordinator(AirbudsSearch::airbudsSearchFlowCoordinator_.ptr(), nullptr, HMUI::ViewController::AnimationDirection::Horizontal, false, false);
     }
 }
 
@@ -147,27 +150,25 @@ MOD_EXTERN_FUNC void late_load() noexcept {
     custom_types::Register::AutoRegister();
 
     // Register main menu button
-    BSML::Register::RegisterMenuButton("Spotify Search", "Search your Spotify songs", []() {
-        SpotifySearch::Log.info("Menu button clicked");
-        SpotifySearch::openSpotifySearchFlowCoordinator();
+    BSML::Register::RegisterMenuButton("Airbuds Search", "Search your Airbuds history", []() {
+        AirbudsSearch::Log.info("Menu button clicked");
+        AirbudsSearch::openAirbudsSearchFlowCoordinator();
     });
 
+    // Register GameplaySetup Tab (left side of song selection screen)
+    AirbudsSearch::UI::GameplaySetupTab::Register();
+
     // Register settings page
-    BSML::Register::RegisterSettingsMenu<SpotifySearch::UI::ViewControllers::SettingsViewController*>("Spotify Search", false);
+    BSML::Register::RegisterSettingsMenu<AirbudsSearch::UI::ViewControllers::SettingsViewController*>("Airbuds Search", false);
 
     // Install hooks
-    INSTALL_HOOK(SpotifySearch::Log, onDismissFlowCoordinator);
+    INSTALL_HOOK(AirbudsSearch::Log, onDismissFlowCoordinator);
 
-    // Initialize the Spotify client
-    if (!SpotifySearch::spotifyClient) {
-        SpotifySearch::spotifyClient = std::make_shared<spotify::Client>();
-        try {
-            SpotifySearch::spotifyClient->login(spotify::Client::getAuthTokenPath());
-        } catch (const std::exception& exception) {
-            SpotifySearch::Log.warn("Failed to authenticate: {}", exception.what());
-        }
+    // Initialize the Airbuds client
+    if (!AirbudsSearch::airbudsClient) {
+        AirbudsSearch::airbudsClient = std::make_shared<airbuds::Client>();
     }
 
     // Initialize BeatSaver utils
-    SpotifySearch::BeatSaverUtils::getInstance().init();
+    AirbudsSearch::BeatSaverUtils::getInstance().init();
 }

@@ -6,10 +6,10 @@
 #include <sys/stat.h>
 #include <functional>
 
-DEFINE_TYPE(SpotifySearch, CustomFileWatcher);
+DEFINE_TYPE(AirbudsSearch, CustomFileWatcher);
 
 using namespace UnityEngine;
-using namespace SpotifySearch;
+using namespace AirbudsSearch;
 
 void CustomFileWatcher::ctor() {
     lastUpdateTime_ = std::chrono::steady_clock::now();

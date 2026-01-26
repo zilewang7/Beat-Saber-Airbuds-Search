@@ -1,6 +1,6 @@
 #include "ThreadPool.hpp"
 
-namespace SpotifySearch {
+namespace AirbudsSearch {
 
 ThreadPool::ThreadPool(size_t maxThreadCount) : maxThreadCount_(maxThreadCount) {}
 
@@ -40,4 +40,4 @@ void ThreadPool::setMaxThreadCount(const size_t maxThreadCount) {
     maxThreadCount_ = maxThreadCount;
 }
 
-} // namespace SpotifySearch
+} // namespace AirbudsSearch

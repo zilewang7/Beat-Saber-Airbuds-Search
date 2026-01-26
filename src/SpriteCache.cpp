@@ -3,7 +3,7 @@
 #include "SpriteCache.hpp"
 #include "main.hpp"
 
-using namespace SpotifySearch;
+using namespace AirbudsSearch;
 
 bool isSpriteValid(UnityW<UnityEngine::Sprite> sprite) {
     if (!sprite) {
@@ -38,11 +38,11 @@ UnityW<UnityEngine::Sprite> SpriteCache::get(const std::string_view key) {
         }
         // Sprite is dead, remove the cache entry
         memoryCache_.erase(hashedKey);
-        SpotifySearch::Log.info("Removing dead sprite from cache. key = {}", hashedKey);
+        AirbudsSearch::Log.info("Removing dead sprite from cache. key = {}", hashedKey);
     }
 
     // Check disk cache
-    const std::filesystem::path path = SpotifySearch::getDataDirectory() / "cache" / hashedKey;
+    const std::filesystem::path path = AirbudsSearch::getDataDirectory() / "cache" / hashedKey;
     if (std::filesystem::exists(path)) {
         const UnityW<UnityEngine::Sprite> sprite = BSML::Lite::FileToSprite(path.string());
         if (sprite) {
@@ -52,7 +52,7 @@ UnityW<UnityEngine::Sprite> SpriteCache::get(const std::string_view key) {
 
         // The sprite was in the disk cache, but we failed to load it. The file is probably corrupted, so let's delete
         // it.
-        SpotifySearch::Log.warn("Failed to load sprite from disk cache: {}. Removing it...", path.string());
+        AirbudsSearch::Log.warn("Failed to load sprite from disk cache: {}. Removing it...", path.string());
         std::filesystem::remove(path);
     }
 
@@ -66,7 +66,7 @@ void SpriteCache::add(const std::string_view key, UnityW<UnityEngine::Sprite> sp
 
 void SpriteCache::addToDiskCache(const std::string& key, const std::vector<uint8_t>& data) {
     const std::string hashedKey = getKeyHash(key);
-    const std::filesystem::path path = SpotifySearch::getDataDirectory() / "cache" / hashedKey;
+    const std::filesystem::path path = AirbudsSearch::getDataDirectory() / "cache" / hashedKey;
     if (!std::filesystem::exists(path)) {
         std::filesystem::create_directories(path.parent_path());
         std::ofstream outputFileStream(path, std::ios::binary);
@@ -74,7 +74,7 @@ void SpriteCache::addToDiskCache(const std::string& key, const std::vector<uint8
             outputFileStream.write(reinterpret_cast<const char*>(data.data()), static_cast<std::streamsize>(data.size()));
             outputFileStream.close();
         } else {
-            SpotifySearch::Log.warn("Failed to open file for writing: {}", path.string());
+            AirbudsSearch::Log.warn("Failed to open file for writing: {}", path.string());
         }
     }
 }

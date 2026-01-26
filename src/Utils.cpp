@@ -20,7 +20,7 @@
 #include "BeatSaverUtils.hpp"
 #include "Log.hpp"
 #include "SpriteCache.hpp"
-#include "UI/FlowCoordinators/SpotifySearchFlowCoordinator.hpp"
+#include "UI/FlowCoordinators/AirbudsSearchFlowCoordinator.hpp"
 #include "Utils.hpp"
 #include "main.hpp"
 
@@ -28,7 +28,7 @@ using ::GlobalNamespace::LevelSelectionFlowCoordinator;
 using ::GlobalNamespace::SelectLevelCategoryViewController;
 using ::GlobalNamespace::SoloFreePlayFlowCoordinator;
 
-std::string SpotifySearch::Utils::encodeBase64(const std::string& input) {
+std::string AirbudsSearch::Utils::encodeBase64(const std::string& input) {
     static const char b64_table[] =
         "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
         "abcdefghijklmnopqrstuvwxyz"
@@ -56,11 +56,11 @@ std::string SpotifySearch::Utils::encodeBase64(const std::string& input) {
     return output;
 }
 
-std::span<const uint8_t> SpotifySearch::Utils::toSpan(const std::string& text) {
+std::span<const uint8_t> AirbudsSearch::Utils::toSpan(const std::string& text) {
     return {reinterpret_cast<const uint8_t*>(text.data()), text.size()};
 }
 
-std::string SpotifySearch::Utils::toLowerCase(const std::string& text) {
+std::string AirbudsSearch::Utils::toLowerCase(const std::string& text) {
     std::string lower = text;
     std::transform(lower.begin(), lower.end(), lower.begin(),
                    [](unsigned char c) {
@@ -69,7 +69,7 @@ std::string SpotifySearch::Utils::toLowerCase(const std::string& text) {
     return lower;
 }
 
-std::string SpotifySearch::Utils::toLowerCase(std::string_view text) {
+std::string AirbudsSearch::Utils::toLowerCase(std::string_view text) {
     std::string lower;
     lower.resize(text.size());
     std::transform(
@@ -82,7 +82,7 @@ std::string SpotifySearch::Utils::toLowerCase(std::string_view text) {
     return lower;
 }
 
-void SpotifySearch::Utils::getImageAsSprite(std::string url, std::function<void(const UnityW<UnityEngine::Sprite> sprite)> onLoadComplete) {
+void AirbudsSearch::Utils::getImageAsSprite(std::string url, std::function<void(const UnityW<UnityEngine::Sprite> sprite)> onLoadComplete) {
     // Check the cache
     const UnityW<UnityEngine::Sprite> sprite = SpriteCache::getInstance().get(url);
     if (sprite) {
@@ -95,10 +95,10 @@ void SpotifySearch::Utils::getImageAsSprite(std::string url, std::function<void(
         const auto response = WebUtils::Get<WebUtils::DataResponse>(WebUtils::URLOptions(url));
         const std::optional<std::vector<uint8_t>> data = response.responseData;
         if (!response.IsSuccessful()) {
-            SpotifySearch::Log.error("Request failed: code = {} url = {}", response.httpCode, url);
+            AirbudsSearch::Log.error("Request failed: code = {} url = {}", response.httpCode, url);
             if (data) {
-                SpotifySearch::Log.error("DATA SIZE {}", data->size());
-                SpotifySearch::Log.error("DATA TXT {}", std::string(data->begin(), data->end()));
+                AirbudsSearch::Log.error("DATA SIZE {}", data->size());
+                AirbudsSearch::Log.error("DATA TXT {}", std::string(data->begin(), data->end()));
             }
             BSML::MainThreadScheduler::Schedule([onLoadComplete] {
                 onLoadComplete(nullptr);
@@ -108,7 +108,7 @@ void SpotifySearch::Utils::getImageAsSprite(std::string url, std::function<void(
 
         // Get response data
         if (!data) {
-            SpotifySearch::Log.error("Response had no data: url = {}", url);
+            AirbudsSearch::Log.error("Response had no data: url = {}", url);
             BSML::MainThreadScheduler::Schedule([onLoadComplete] {
                 onLoadComplete(nullptr);
             });
@@ -122,7 +122,7 @@ void SpotifySearch::Utils::getImageAsSprite(std::string url, std::function<void(
         BSML::MainThreadScheduler::Schedule([data, onLoadComplete, url] {
             const UnityW<UnityEngine::Sprite> sprite = BSML::Lite::ArrayToSprite(ArrayW<uint8_t>(*data));
             if (!sprite) {
-                SpotifySearch::Log.error("Failed to create sprite from response data! url = {} data length = {}", url, data->size());
+                AirbudsSearch::Log.error("Failed to create sprite from response data! url = {} data length = {}", url, data->size());
                 onLoadComplete(nullptr);
                 return;
             }
@@ -132,7 +132,7 @@ void SpotifySearch::Utils::getImageAsSprite(std::string url, std::function<void(
     }).detach();
 }
 
-void SpotifySearch::Utils::getCoverImageSprite(const std::string& songHash, std::function<void(const UnityW<UnityEngine::Sprite> sprite)> onLoadComplete) {
+void AirbudsSearch::Utils::getCoverImageSprite(const std::string& songHash, std::function<void(const UnityW<UnityEngine::Sprite> sprite)> onLoadComplete) {
     // Check if we have this beatmap loaded locally
     const SongCore::SongLoader::CustomBeatmapLevel* beatmap = SongCore::API::Loading::GetLevelByHash(songHash);
     if (!beatmap) {
@@ -145,7 +145,7 @@ void SpotifySearch::Utils::getCoverImageSprite(const std::string& songHash, std:
     // Get the cover image file path
     const std::string coverImageFilePath = getCoverImageFilePath(*beatmap);
     if (!System::IO::File::Exists(coverImageFilePath)) {
-        SpotifySearch::Log.warn("Cover image page does not exist: {}", coverImageFilePath);
+        AirbudsSearch::Log.warn("Cover image page does not exist: {}", coverImageFilePath);
         return onLoadComplete(nullptr);
     }
 
@@ -154,7 +154,7 @@ void SpotifySearch::Utils::getCoverImageSprite(const std::string& songHash, std:
     return onLoadComplete(BSML::Lite::FileToSprite(coverImageFilePath));
 }
 
-std::string SpotifySearch::Utils::getCoverImageFilePath(const SongCore::SongLoader::CustomBeatmapLevel& beatmap) {
+std::string AirbudsSearch::Utils::getCoverImageFilePath(const SongCore::SongLoader::CustomBeatmapLevel& beatmap) {
     std::string coverImageFileName;
 
     // Try V2/V3
@@ -172,7 +172,7 @@ std::string SpotifySearch::Utils::getCoverImageFilePath(const SongCore::SongLoad
     return System::IO::Path::Combine(beatmap.get_customLevelPath(), coverImageFileName);
 }
 
-UnityW<UnityEngine::Sprite> SpotifySearch::Utils::createSimpleSprite() {
+UnityW<UnityEngine::Sprite> AirbudsSearch::Utils::createSimpleSprite() {
     auto tex = UnityEngine::Texture2D::New_ctor(1, 1);
     tex->SetPixel(0, 0, UnityEngine::Color::get_white());
     tex->Apply();
@@ -182,7 +182,7 @@ UnityW<UnityEngine::Sprite> SpotifySearch::Utils::createSimpleSprite() {
     return UnityEngine::Sprite::Create(tex, rect, pivot);
 }
 
-UnityW<UnityEngine::Sprite> SpotifySearch::Utils::getPlaylistPlaceholderSprite() {
+UnityW<UnityEngine::Sprite> AirbudsSearch::Utils::getPlaylistPlaceholderSprite() {
     static constexpr std::string KEY_PLAYLIST_PLACEHOLDER = "playlist-placeholder";
     UnityW<UnityEngine::Sprite> sprite = SpriteCache::getInstance().get(KEY_PLAYLIST_PLACEHOLDER);
     if (!sprite) {
@@ -192,7 +192,7 @@ UnityW<UnityEngine::Sprite> SpotifySearch::Utils::getPlaylistPlaceholderSprite()
     return sprite;
 }
 
-UnityW<UnityEngine::Sprite> SpotifySearch::Utils::getAlbumPlaceholderSprite() {
+UnityW<UnityEngine::Sprite> AirbudsSearch::Utils::getAlbumPlaceholderSprite() {
     static constexpr std::string KEY_ALBUM_PLACEHOLDER = "album-placeholder";
     UnityW<UnityEngine::Sprite> sprite = SpriteCache::getInstance().get(KEY_ALBUM_PLACEHOLDER);
     if (!sprite) {
@@ -202,11 +202,11 @@ UnityW<UnityEngine::Sprite> SpotifySearch::Utils::getAlbumPlaceholderSprite() {
     return sprite;
 }
 
-custom_types::Helpers::Coroutine SpotifySearch::Utils::getAudioClipFromUrl(const std::string_view url, const std::function<void(UnityW<UnityEngine::AudioClip> audioClip)> onLoadComplete) {
+custom_types::Helpers::Coroutine AirbudsSearch::Utils::getAudioClipFromUrl(const std::string_view url, const std::function<void(UnityW<UnityEngine::AudioClip> audioClip)> onLoadComplete) {
     UnityEngine::Networking::UnityWebRequest* const request = UnityEngine::Networking::UnityWebRequestMultimedia::GetAudioClip(url, UnityEngine::AudioType::MPEG);
     co_yield reinterpret_cast<System::Collections::IEnumerator*>(CRASH_UNLESS(request->SendWebRequest()));
     if (request->GetError() != UnityEngine::Networking::UnityWebRequest::UnityWebRequestError::OK) {
-        SpotifySearch::Log.warn("Web request error");
+        AirbudsSearch::Log.warn("Web request error");
         request->Dispose();
         onLoadComplete(nullptr);
         co_return;
@@ -218,12 +218,12 @@ custom_types::Helpers::Coroutine SpotifySearch::Utils::getAudioClipFromUrl(const
     co_return;
 }
 
-void SpotifySearch::Utils::getAudioClipForSongHash(const std::string_view songHash, const std::function<void(UnityW<UnityEngine::AudioClip> audioClip)> onLoadComplete) {
+void AirbudsSearch::Utils::getAudioClipForSongHash(const std::string_view songHash, const std::function<void(UnityW<UnityEngine::AudioClip> audioClip)> onLoadComplete) {
     const std::string url = BeatSaverUtils::getInstance().getMP3PreviewDownloadUrl(toLowerCase(songHash));
     BSML::SharedCoroutineStarter::get_instance()->StartCoroutine(custom_types::Helpers::CoroutineHelper::New(getAudioClipFromUrl(url, onLoadComplete)));
 }
 
-void SpotifySearch::Utils::reloadDataKeepingPosition(UnityW<HMUI::TableView> tableView) {
+void AirbudsSearch::Utils::reloadDataKeepingPosition(UnityW<HMUI::TableView> tableView) {
     // We could use ReloadDataKeepingPosition(), but it snaps to the nearest cell. Setting the scroll
     // position manually, we can maintain our position in between cells.
     const float scrollPosition = tableView->contentTransform->anchoredPosition.y;
@@ -231,14 +231,14 @@ void SpotifySearch::Utils::reloadDataKeepingPosition(UnityW<HMUI::TableView> tab
     tableView->ScrollToPosition(scrollPosition, false);
 }
 
-std::string SpotifySearch::Utils::jsonDocumentToString(const rapidjson::Value& value) {
+std::string AirbudsSearch::Utils::jsonDocumentToString(const rapidjson::Value& value) {
     rapidjson::StringBuffer buffer;
     rapidjson::Writer<rapidjson::StringBuffer> writer(buffer);
     value.Accept(writer);
     return buffer.GetString();
 }
 
-namespace SpotifySearch::Utils {
+namespace AirbudsSearch::Utils {
 
 SongDetailsCache::MapDifficulty getMapDifficultyFromString(const std::string& text) {
     if (text == "Easy") {
@@ -265,14 +265,14 @@ void setIconScale(UnityW<UnityEngine::UI::Button> button, const float scale) {
     button->get_transform()->Find("Content/Icon")->set_localScale({scale, scale, scale});
 }
 
-}// namespace SpotifySearch::Utils
+}// namespace AirbudsSearch::Utils
 
-void SpotifySearch::Utils::goToLevelSelect(const std::string& songHash) {
+void AirbudsSearch::Utils::goToLevelSelect(const std::string& songHash) {
     auto level = SongCore::API::Loading::GetLevelByHash(songHash);
     BSML::MainThreadScheduler::Schedule([level] {
         UnityW<HMUI::FlowCoordinator> parentFlowCoordinator = BSML::Helpers::GetMainFlowCoordinator()->YoungestChildFlowCoordinatorOrSelf();
-        auto spotifySearchFlowCoordinator = parentFlowCoordinator.cast<SpotifySearch::UI::FlowCoordinators::SpotifySearchFlowCoordinator>();
-        spotifySearchFlowCoordinator->_parentFlowCoordinator->DismissFlowCoordinator(spotifySearchFlowCoordinator, HMUI::ViewController::AnimationDirection::Horizontal, nullptr, true);
+        auto airbudsSearchFlowCoordinator = parentFlowCoordinator.cast<AirbudsSearch::UI::FlowCoordinators::AirbudsSearchFlowCoordinator>();
+        airbudsSearchFlowCoordinator->_parentFlowCoordinator->DismissFlowCoordinator(airbudsSearchFlowCoordinator, HMUI::ViewController::AnimationDirection::Horizontal, nullptr, true);
 
         auto customLevelsPack = SongCore::API::Loading::GetCustomLevelPack();
 
@@ -293,19 +293,19 @@ void SpotifySearch::Utils::goToLevelSelect(const std::string& songHash) {
             songSelectButton = UnityEngine::GameObject::Find("Wrapper/BeatmapWithModifiers/BeatmapSelection/EditButton");
         }
         if (!songSelectButton) {
-            SpotifySearch::Log.error("Can't find song select button!");
+            AirbudsSearch::Log.error("Can't find song select button!");
             return;
         }
         songSelectButton->GetComponent<HMUI::NoTransitionsButton*>()->Press();
-        SpotifySearch::Log.info("go to level search, set return = true");
-        SpotifySearch::returnToSpotifySearch = true;
+        AirbudsSearch::Log.info("go to level search, set return = true");
+        AirbudsSearch::returnToAirbudsSearch = true;
     });
 }
 
 #include "System/Type.hpp"
 #include "UnityEngine/Object.hpp"
 
-namespace SpotifySearch::Debug {
+namespace AirbudsSearch::Debug {
 
 void dumpViewHierarchy(UnityW<UnityEngine::Transform> root, int depth) {
     if (!root) return;
@@ -323,7 +323,7 @@ void dumpViewHierarchy(UnityW<UnityEngine::Transform> root, int depth) {
             std::string(text->get_text()))
         );
     }
-    SpotifySearch::Log.info("{}", line);
+    AirbudsSearch::Log.info("{}", line);
 
     // Print attached components
     auto comps = go->GetComponents<UnityEngine::Component*>();
@@ -348,7 +348,7 @@ void dumpViewHierarchy(UnityW<UnityEngine::Transform> root, int depth) {
             ));
         }
 
-        SpotifySearch::Log.info("{}", line);
+        AirbudsSearch::Log.info("{}", line);
     }
 
     // Recurse into children
@@ -359,13 +359,13 @@ void dumpViewHierarchy(UnityW<UnityEngine::Transform> root, int depth) {
 
 void dumpAllSprites() {
     auto sprites = UnityEngine::Resources::FindObjectsOfTypeAll<UnityEngine::Sprite*>();
-    SpotifySearch::Log.info("SPRITE LEN: {}", sprites->get_Length());
+    AirbudsSearch::Log.info("SPRITE LEN: {}", sprites->get_Length());
     for (int i = 0; i < sprites->get_Length(); i++) {
         auto s = sprites->_values[i];
         if (s && !s->get_name()->IsNullOrEmpty(s->get_name())) {
-            SpotifySearch::Log.info("SPRITE NAME: {}", s->get_name());
+            AirbudsSearch::Log.info("SPRITE NAME: {}", s->get_name());
         }
     }
 }
 
-}// namespace SpotifySearch::Debug
+}// namespace AirbudsSearch::Debug

@@ -42,6 +42,6 @@ jobs:
           name: Artifacts
           compression-level: 0
           path: |
-            build/libspotify-search.so
-            build/debug/libspotify-search.so.debug
-            build/spotify-search-v*.qmod
+            build/libairbuds-search.so
+            build/debug/libairbuds-search.so.debug
+            build/airbuds-search-v*.qmod

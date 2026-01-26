@@ -3,7 +3,7 @@
 #include <vector>
 #include <string_view>
 
-namespace SpotifySearch {
+namespace AirbudsSearch {
 
 using Bytes = std::vector<uint8_t>;
 

@@ -7,10 +7,10 @@
 #include "UI/TableViewDataSources/DownloadHistoryTableViewDataSource.hpp"
 #include "UI/ViewControllers/DownloadHistoryViewController.hpp"
 
-DEFINE_TYPE(SpotifySearch::UI::ViewControllers, DownloadHistoryViewController);
+DEFINE_TYPE(AirbudsSearch::UI::ViewControllers, DownloadHistoryViewController);
 
-using namespace SpotifySearch::UI;
-using namespace SpotifySearch::UI::ViewControllers;
+using namespace AirbudsSearch::UI;
+using namespace AirbudsSearch::UI::ViewControllers;
 
 void DownloadHistoryViewController::DidActivate(const bool isFirstActivation, const bool addedToHierarchy, const bool screenSystemDisabling) {
     if (isFirstActivation) {

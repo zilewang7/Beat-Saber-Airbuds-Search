@@ -3,7 +3,7 @@
 #include <openssl/evp.h>
 #include <openssl/rand.h>
 
-namespace SpotifySearch {
+namespace AirbudsSearch {
 
 // Derive key from password and salt using PBKDF2
 Bytes deriveKey(const std::string_view password, const Bytes &salt, int keyLen) {

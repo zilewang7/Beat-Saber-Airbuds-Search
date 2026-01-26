@@ -4,15 +4,15 @@
   "name": "${mod_name}",
   "id": "${mod_id}",
   "modloader": "Scotland2",
-  "author": "Tycho Bellers",
+  "author": "DDC forked from Tycho Bellers (original author)",
   "packageId": "com.beatgames.beatsaber",
   "packageVersion": "1.40.8_7379",
-  "description": "Access your Spotify playlists and quickly search for matching custom maps!",
+  "description": "Use your Airbuds (support Spotify, Apple Music, SoundCloud, Deezer, Amazon Music, Audiomack) listening history to quickly search BeatSaver maps!\nFor better Japanese search results, install the 'Airbuds Search Kakasi' mod.\nForked from Tycho Bellers' original Spotify Search.",
   "version": "${version}",
   "dependencies": [],
   "modFiles": [],
   "lateModFiles": [
-    "libspotify-search.so"
+    "libairbuds-search.so"
   ],
   "libraryFiles": [],
   "fileCopies": [],

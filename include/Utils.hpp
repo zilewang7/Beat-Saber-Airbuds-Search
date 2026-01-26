@@ -7,7 +7,7 @@
 #include "song-details/shared/SongDetails.hpp"
 #include "songcore/shared/SongLoader/CustomBeatmapLevel.hpp"
 
-namespace SpotifySearch::Utils {
+namespace AirbudsSearch::Utils {
 
 std::string toLowerCase(const std::string& text);
 
@@ -56,12 +56,12 @@ T* findParentWithComponent(UnityEngine::Transform* start) {
 
 void setIconScale(UnityW<UnityEngine::UI::Button> button, float scale);
 
-}// namespace SpotifySearch::Utils
+}// namespace AirbudsSearch::Utils
 
-namespace SpotifySearch::Debug {
+namespace AirbudsSearch::Debug {
 
 void dumpViewHierarchy(UnityW<UnityEngine::Transform> transform, int depth = 0);
 
 void dumpAllSprites();
 
-}// namespace SpotifySearch::Debug
+}// namespace AirbudsSearch::Debug

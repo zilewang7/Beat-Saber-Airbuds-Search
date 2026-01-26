@@ -4,7 +4,7 @@
 #include "Utils.hpp"
 #include "Log.hpp"
 
-namespace SpotifySearch {
+namespace AirbudsSearch {
 
 BeatSaverUtils& BeatSaverUtils::getInstance() {
     static BeatSaverUtils beatSaverUtils;
@@ -13,6 +13,7 @@ BeatSaverUtils& BeatSaverUtils::getInstance() {
 
 void BeatSaverUtils::init() {
     previewDownloadUrlPrefix_ = getPreviewDownloadUrl();
+    AirbudsSearch::Log.info("BeatSaver preview URL prefix = {}", previewDownloadUrlPrefix_);
 }
 
 std::string BeatSaverUtils::getMP3PreviewDownloadUrl(const std::string& songHash) {
@@ -25,7 +26,14 @@ std::string BeatSaverUtils::getMP3PreviewDownloadUrl(const std::string& songHash
 std::string BeatSaverUtils::getPreviewDownloadUrl() {
     // Arbitrary map ID
     static const std::string MAP_ID{"4a5a2"};
-    const auto response = Get<WebUtils::JsonResponse>(WebUtils::URLOptions(std::format("{}/maps/id/{}", BeatSaverUtils::BASE_API_URL, MAP_ID)));
+    const std::string url = std::format("{}/maps/id/{}", BeatSaverUtils::BASE_API_URL, MAP_ID);
+    AirbudsSearch::Log.info("BeatSaver request: getPreviewDownloadUrl url={} mapId={}", url, MAP_ID);
+    const auto response = Get<WebUtils::JsonResponse>(WebUtils::URLOptions(url));
+    AirbudsSearch::Log.info(
+        "BeatSaver response: getPreviewDownloadUrl http={} curl={} parsed={}",
+        response.get_HttpCode(),
+        response.get_CurlStatus(),
+        response.DataParsedSuccessful());
     const auto& data = response.responseData;
     if (!response.IsSuccessful()) {
         if (data) {

@@ -11,8 +11,8 @@ def adb_pull(path: Path):
 def main():
     log_file_dir = Path('/sdcard/ModData/com.beatgames.beatsaber/logs2')
     log_file_paths = [
-        log_file_dir / 'spotify-search.log',
-        log_file_dir / 'spotify-search.1.log'
+        log_file_dir / 'airbuds-search.log',
+        log_file_dir / 'airbuds-search.1.log'
     ]
     for path in log_file_paths:
         adb_pull(path)

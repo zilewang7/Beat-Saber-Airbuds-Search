@@ -15,64 +15,101 @@ if ($help -eq $true) {
     exit
 }
 
-$mod = "./mod.json"
-
-& $PSScriptRoot/validate-modjson.ps1
-if ($LASTEXITCODE -ne 0) {
-    exit $LASTEXITCODE
-}
-$modJson = Get-Content $mod -Raw | ConvertFrom-Json
-
-if ($qmodName -eq "") {
-    $qmodName = $modJson.name
-}
-
-$filelist = @($mod)
-
-$cover = "./" + $modJson.coverImage
-if ((-not ($cover -eq "./")) -and (Test-Path $cover)) {
-    $filelist += ,$cover
-}
-
-foreach ($mod in $modJson.modFiles) {
-    $path = "./build/" + $mod
-    if (-not (Test-Path $path)) {
-        $path = "./extern/libs/" + $mod
+$repoRoot = Resolve-Path (Join-Path $PSScriptRoot "..")
+Push-Location $repoRoot
+try {
+    & $PSScriptRoot/validate-modjson.ps1
+    if ($LASTEXITCODE -ne 0) {
+        exit $LASTEXITCODE
     }
-    if (-not (Test-Path $path)) {
-        Write-Output "Error: could not find dependency: $path"
-        exit 1
+
+    $mod = Join-Path $repoRoot "mod.json"
+    $modJson = Get-Content $mod -Raw | ConvertFrom-Json
+
+    if ($qmodName -eq "") {
+        $qmodName = $modJson.name
     }
-    $filelist += $path
+
+    $stagingDir = Join-Path $repoRoot ("qmod-staging-" + [Guid]::NewGuid().ToString("N"))
+    New-Item -ItemType Directory -Force -Path $stagingDir | Out-Null
+
+    function Copy-ToStaging([string]$sourcePath, [string]$destRelative) {
+        $destPath = Join-Path $stagingDir $destRelative
+        $destDir = Split-Path -Parent $destPath
+        if ($destDir -and -not (Test-Path $destDir)) {
+            New-Item -ItemType Directory -Force -Path $destDir | Out-Null
+        }
+        Copy-Item $sourcePath $destPath -Force
+    }
+
+    Copy-ToStaging $mod "mod.json"
+
+    $cover = Join-Path $repoRoot $modJson.coverImage
+    if ((-not ([string]::IsNullOrEmpty($modJson.coverImage))) -and (Test-Path $cover)) {
+        Copy-ToStaging $cover $modJson.coverImage
+    }
+
+    foreach ($modFile in $modJson.modFiles) {
+        $path = Join-Path $repoRoot ("build/" + $modFile)
+        if (-not (Test-Path $path)) {
+            $path = Join-Path $repoRoot ("extern/libs/" + $modFile)
+        }
+        if (-not (Test-Path $path)) {
+            Write-Output "Error: could not find dependency: $path"
+            exit 1
+        }
+        Copy-ToStaging $path $modFile
+    }
+
+    foreach ($modFile in $modJson.lateModFiles) {
+        $path = Join-Path $repoRoot ("build/" + $modFile)
+        if (-not (Test-Path $path)) {
+            $path = Join-Path $repoRoot ("extern/libs/" + $modFile)
+        }
+        if (-not (Test-Path $path)) {
+            Write-Output "Error: could not find dependency: $path"
+            exit 1
+        }
+        Copy-ToStaging $path $modFile
+    }
+
+    foreach ($lib in $modJson.libraryFiles) {
+        $path = Join-Path $repoRoot ("build/" + $lib)
+        if (-not (Test-Path $path)) {
+            $path = Join-Path $repoRoot ("extern/libs/" + $lib)
+        }
+        if (-not (Test-Path $path)) {
+            Write-Output "Error: could not find dependency: $path"
+            exit 1
+        }
+        Copy-ToStaging $path $lib
+    }
+
+    if ($modJson.fileCopies) {
+        foreach ($copy in $modJson.fileCopies) {
+            $sourceRel = $copy.source
+            if ([string]::IsNullOrEmpty($sourceRel)) {
+                $sourceRel = $copy.name
+            }
+            if ([string]::IsNullOrEmpty($sourceRel)) {
+                continue
+            }
+            $sourcePath = Join-Path $repoRoot $sourceRel
+            if (-not (Test-Path $sourcePath)) {
+                Write-Output "Error: could not find fileCopy source: $sourceRel"
+                exit 1
+            }
+            Copy-ToStaging $sourcePath $sourceRel
+        }
+    }
+
+    $zip = Join-Path $repoRoot ($qmodName + ".zip")
+    $qmod = Join-Path $repoRoot ($qmodName + ".qmod")
+
+    Compress-Archive -Path (Join-Path $stagingDir "*") -DestinationPath $zip -Force
+    Move-Item $zip $qmod -Force
+    Remove-Item $stagingDir -Recurse -Force
 }
-
-foreach ($mod in $modJson.lateModFiles) {
-    $path = "./build/" + $mod
-    if (-not (Test-Path $path)) {
-        $path = "./extern/libs/" + $mod
-    }
-    if (-not (Test-Path $path)) {
-        Write-Output "Error: could not find dependency: $path"
-        exit 1
-    }
-    $filelist += $path
+finally {
+    Pop-Location
 }
-
-
-foreach ($lib in $modJson.libraryFiles) {
-    $path = "./build/" + $lib
-    if (-not (Test-Path $path)) {
-        $path = "./extern/libs/" + $lib
-    }
-    if (-not (Test-Path $path)) {
-        Write-Output "Error: could not find dependency: $path"
-        exit 1
-    }
-    $filelist += $path
-}
-
-$zip = $qmodName + ".zip"
-$qmod = $qmodName + ".qmod"
-
-Compress-Archive -Path $filelist -DestinationPath $zip -Update
-Move-Item $zip $qmod -Force

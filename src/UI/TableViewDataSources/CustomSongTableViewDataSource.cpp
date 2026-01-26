@@ -5,29 +5,29 @@
 
 #include "HMUI/Touchable.hpp"
 
-DEFINE_TYPE(SpotifySearch::UI, CustomSongTableViewDataSource);
+DEFINE_TYPE(AirbudsSearch::UI, CustomSongTableViewDataSource);
 
-using namespace SpotifySearch::UI;
+using namespace AirbudsSearch::UI;
 
 HMUI::TableCell* CustomSongTableViewDataSource::CellForIdx(HMUI::TableView* tableView, int idx) {
     auto tcd = tableView->DequeueReusableCellForIdentifier("CustomSongListTableCellReuseIdentifier");
-    CustomSongTableViewCell* spotifyCell;
+    CustomSongTableViewCell* cell;
     if (!tcd) {
-        auto tableCell = UnityEngine::GameObject::New_ctor("SpotifySongListTableCell");
-        spotifyCell = tableCell->AddComponent<CustomSongTableViewCell*>();
-        spotifyCell->get_gameObject()->AddComponent<HMUI::Touchable*>();
-        spotifyCell->set_interactable(true);
+        auto tableCell = UnityEngine::GameObject::New_ctor("CustomSongListTableCell");
+        cell = tableCell->AddComponent<CustomSongTableViewCell*>();
+        cell->get_gameObject()->AddComponent<HMUI::Touchable*>();
+        cell->set_interactable(true);
 
-        spotifyCell->set_reuseIdentifier("CustomSongListTableCellReuseIdentifier");
-        BSML::parse_and_construct(IncludedAssets::CustomSongTableViewCell_bsml, spotifyCell->get_transform(), spotifyCell);
+        cell->set_reuseIdentifier("CustomSongListTableCellReuseIdentifier");
+        BSML::parse_and_construct(IncludedAssets::CustomSongTableViewCell_bsml, cell->get_transform(), cell);
     } else {
-        spotifyCell = tcd->GetComponent<CustomSongTableViewCell*>();
+        cell = tcd->GetComponent<CustomSongTableViewCell*>();
     }
 
     const SongDetailsCache::Song* const song = customSongs_.at(idx);
-    spotifyCell->setSong(song);
+    cell->setSong(song);
 
-    return spotifyCell;
+    return cell;
 }
 
 int CustomSongTableViewDataSource::NumberOfCells() {

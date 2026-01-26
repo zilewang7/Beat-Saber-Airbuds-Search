@@ -3,8 +3,7 @@
 #include <custom-types/shared/macros.hpp>
 #include <bsml/shared/BSML.hpp>
 #include <TMPro/TextMeshProUGUI.hpp>
-#include <bsml/shared/BSML/Components/Settings/ToggleSetting.hpp>
-#include <HMUI/EventSystemListener.hpp>
+#include <HMUI/InputFieldView.hpp>
 
 #include "Log.hpp"
 #include "Modal.hpp"
@@ -18,40 +17,54 @@ using BaseViewController = BSML::HotReloadViewController;
 using BaseViewController = HMUI::ViewController;
 #endif
 
-DECLARE_CLASS_CODEGEN_INTERFACES(SpotifySearch::UI::ViewControllers, SettingsViewController, BaseViewController) {
+DECLARE_CLASS_CODEGEN_INTERFACES(AirbudsSearch::UI::ViewControllers, SettingsViewController, BaseViewController) {
 
     DECLARE_OVERRIDE_METHOD_MATCH(void, DidActivate, &HMUI::ViewController::DidActivate, bool isFirstActivation, bool addedToHierarchy, bool screenSystemDisabling);
 
     DECLARE_INSTANCE_METHOD(void, PostParse);
 
-    // Spotify Account
-    // DECLARE_INSTANCE_FIELD(UnityW<HMUI::ImageView>, profileImageView_);
-    DECLARE_INSTANCE_FIELD(UnityW<TMPro::TextMeshProUGUI>, profileTextView_);
-    DECLARE_INSTANCE_FIELD(UnityW<UnityEngine::UI::Button>, loginOrLogoutButton_);
-    DECLARE_INSTANCE_METHOD(void, onLoginOrLogoutButtonClicked);
+    // Airbuds refresh token
+    DECLARE_INSTANCE_FIELD(UnityW<HMUI::InputFieldView>, refreshTokenTextField_);
+    DECLARE_INSTANCE_FIELD(UnityW<UnityEngine::UI::Button>, refreshTokenPasteButton_);
+    DECLARE_INSTANCE_FIELD(UnityW<UnityEngine::UI::Button>, refreshTokenClearButton_);
+    DECLARE_INSTANCE_FIELD(UnityW<UnityEngine::UI::Button>, refreshTokenSaveButton_);
+    DECLARE_INSTANCE_FIELD(UnityW<TMPro::TextMeshProUGUI>, refreshTokenStatusTextView_);
+    DECLARE_INSTANCE_METHOD(void, onPasteRefreshTokenButtonClicked);
+    DECLARE_INSTANCE_METHOD(void, onClearRefreshTokenButtonClicked);
+    DECLARE_INSTANCE_METHOD(void, onSaveRefreshTokenButtonClicked);
+
+    // Kakasi Mod Status
+    DECLARE_INSTANCE_FIELD(UnityW<TMPro::TextMeshProUGUI>, kakasiStatusTextView_);
 
     // Image Cache
     DECLARE_INSTANCE_FIELD(UnityW<TMPro::TextMeshProUGUI>, cacheSizeTextView_);
     DECLARE_INSTANCE_FIELD(UnityW<UnityEngine::UI::Button>, clearCacheButton_);
     DECLARE_INSTANCE_METHOD(void, onClearCacheButtonClicked);
 
-    // Require PIN
-    DECLARE_INSTANCE_FIELD(UnityW<BSML::ToggleSetting>, requirePinCheckbox_);
-    DECLARE_INSTANCE_METHOD(void, onRequirePinCheckboxChanged);
+    // History Cache
+    DECLARE_INSTANCE_FIELD(UnityW<TMPro::TextMeshProUGUI>, historyCacheSizeTextView_);
+    DECLARE_INSTANCE_FIELD(ListW<StringW>, historyClearRangeOptions_);
+    DECLARE_INSTANCE_FIELD(StringW, historyClearRangeValue_);
+    DECLARE_INSTANCE_FIELD(UnityW<UnityEngine::UI::Button>, clearHistoryButton_);
+    DECLARE_INSTANCE_METHOD(void, onClearHistoryButtonClicked);
 
     // Modal
     DECLARE_INSTANCE_FIELD(UnityW<ModalView>, modalView_);
 
     private:
-    void refreshSpotifyAccountStatus();
+    void refreshAirbudsTokenStatus();
+    void refreshKakasiStatus();
     void refreshCacheSizeStatus();
+    void refreshHistoryCacheSizeStatus();
 
     void refresh();
+
+    void clearHistoryOlderThan(std::chrono::hours age);
+    void clearAllHistory();
 
     uintmax_t getDirectorySizeInBytes(const std::filesystem::path& path);
     std::string getHumanReadableSize(uintmax_t bytes);
 
     std::atomic_bool isClearingCache_;
-
-    std::atomic_bool showModalOnChange_;
+    std::atomic_bool isClearingHistory_;
 };

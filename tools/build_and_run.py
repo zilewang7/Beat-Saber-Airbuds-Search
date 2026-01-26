@@ -324,7 +324,7 @@ def main():
         '--pid',
         'com.beatgames.beatsaber',
         '--tag',
-        'spotify-search'
+        'airbuds-search'
     ], cwd=project_root_dir)
     if process.returncode != 0:
         logger.error(f'Logging Failed! Exit Code = {process.returncode}')

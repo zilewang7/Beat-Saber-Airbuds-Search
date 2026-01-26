@@ -2,7 +2,7 @@
 
 #pragma once
 
-namespace SpotifySearch {
+namespace AirbudsSearch {
 
 class Modal {
     public:
