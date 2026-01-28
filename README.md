@@ -7,7 +7,7 @@ Airbuds is a mobile app that supports viewing your playback records on the follo
 - `Apple Music`
 - `SoundCloud`
 - `Deezer`
-- `bAmazon Music`
+- `Amazon Music`
 - `Audiomack`
 
 ## Fork Notice
@@ -16,7 +16,7 @@ This project is forked from [Beat-Saber-Spotify-Search](https://github.com/Tycho
 
 Key differences:
 - Rebranded as Airbuds Search (mod id `airbuds-search`).
-- Romaji conversion is provided by an optional GPL Kakasi adapter mod (`airbuds-search-kakasi`).
+- Romaji conversion is provided by an optional GPL Kakasi adapter mod [airbuds-search-kakasi](https://github.com/zilewang7/Beat-Saber-Airbuds-Search-Kakasi).
 - Recently played list is grouped by day, cached to disk.
 - Show maps from BeatSaver ordered by matching of name and difficulty (no more filter but only order).
 - Register button into side menu of Solo and Multiplayer.
@@ -52,7 +52,7 @@ Example:
 
 Search results are fetched online from BeatSaver. The Download button shows when a map is not installed locally.
 
-For song titles and artists containing Japanese characters, the mod will attempt to generate romaji for additional searches. If the optional Kakasi adapter mod is installed, it provides higher-quality conversion; otherwise the fallback is kana-only.
+For song titles and artists containing Japanese characters, the mod will attempt to generate romaji for additional searches. If the optional [Kakasi adapter mod](https://github.com/zilewang7/Beat-Saber-Airbuds-Search-Kakasi) is installed, it provides higher-quality conversion; otherwise the fallback is kana-only.
 
 ### Optional: Romaji Overrides
 
