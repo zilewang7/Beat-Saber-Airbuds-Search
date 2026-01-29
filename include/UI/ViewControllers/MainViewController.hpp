@@ -100,6 +100,7 @@ DECLARE_CLASS_CODEGEN_INTERFACES(AirbudsSearch::UI::ViewControllers, MainViewCon
 
     public:
     void setFilter(const CustomSongFilter& customSongFilter);
+    void setHistoryFriend(const std::optional<airbuds::Friend>& friendUser);
 
     private:
     std::vector<const SongDetailsCache::Song*> searchResultItems_;
@@ -107,6 +108,7 @@ DECLARE_CLASS_CODEGEN_INTERFACES(AirbudsSearch::UI::ViewControllers, MainViewCon
 
     std::unique_ptr<airbuds::Playlist> selectedPlaylist_;
     std::unique_ptr<const airbuds::Track> selectedTrack_;
+    std::optional<airbuds::Friend> selectedFriend_;
 
     std::queue<std::shared_ptr<DownloadHistoryItem>> pendingDownloads_;
     std::mutex pendingDownloadsMutex_;
@@ -121,6 +123,7 @@ DECLARE_CLASS_CODEGEN_INTERFACES(AirbudsSearch::UI::ViewControllers, MainViewCon
 
     void setRandomScopeVisible(bool visible);
     void updateRandomScopeButtonLabel();
+    void updateHistoryTitle();
     void forceLayoutRebuild();
 
     bool randomAcrossAllDays_;
@@ -132,6 +135,10 @@ DECLARE_CLASS_CODEGEN_INTERFACES(AirbudsSearch::UI::ViewControllers, MainViewCon
     void reloadAirbudsTrackListView();
     void reloadAirbudsPlaylistListView();
     bool selectPlaylistById(std::string_view playlistId);
+    std::optional<std::string> getSelectedFriendId() const;
+    bool historyContextMatches(const std::optional<std::string>& friendId) const;
+    std::vector<airbuds::PlaylistTrack> getRecentlyPlayedCachedOnlyForCurrentUser();
+    std::string getHistoryTitle() const;
 
     void setSelectedSongUi(const SongDetailsCache::Song* const song);
 

@@ -1397,6 +1397,57 @@ void MainViewController::updateRandomScopeButtonLabel() {
     }
 }
 
+void MainViewController::updateHistoryTitle() {
+    if (!airbudsColumnTitleTextView_) {
+        return;
+    }
+    airbudsColumnTitleTextView_->set_text(getHistoryTitle());
+}
+
+std::optional<std::string> MainViewController::getSelectedFriendId() const {
+    if (!selectedFriend_ || selectedFriend_->id.empty()) {
+        return std::nullopt;
+    }
+    return selectedFriend_->id;
+}
+
+bool MainViewController::historyContextMatches(const std::optional<std::string>& friendId) const {
+    if (!friendId && !selectedFriend_) {
+        return true;
+    }
+    if (friendId && selectedFriend_ && selectedFriend_->id == *friendId) {
+        return true;
+    }
+    return false;
+}
+
+std::vector<airbuds::PlaylistTrack> MainViewController::getRecentlyPlayedCachedOnlyForCurrentUser() {
+    if (!AirbudsSearch::airbudsClient) {
+        return {};
+    }
+    if (selectedFriend_) {
+        return AirbudsSearch::airbudsClient->getRecentlyPlayedCachedOnlyForUser(selectedFriend_->id);
+    }
+    return AirbudsSearch::airbudsClient->getRecentlyPlayedCachedOnly();
+}
+
+std::string MainViewController::getHistoryTitle() const {
+    if (selectedPlaylist_) {
+        return selectedPlaylist_->name;
+    }
+    if (selectedFriend_) {
+        std::string label = selectedFriend_->displayName;
+        if (label.empty()) {
+            label = selectedFriend_->identifier;
+        }
+        if (label.empty()) {
+            label = "Friend";
+        }
+        return std::format("{} History", label);
+    }
+    return "Select History";
+}
+
 void MainViewController::forceLayoutRebuild() {
     auto* rootRect = get_transform()->GetComponent<UnityEngine::RectTransform*>();
     if (rootRect) {
@@ -1428,8 +1479,9 @@ void MainViewController::reloadAirbudsTrackListView() {
     airbudsTrackListView_->get_gameObject()->set_active(true);
     randomTrackButton_->get_gameObject()->set_active(false);
     const std::string playlistId = selectedPlaylist_->id;
+    const std::optional<std::string> friendId = getSelectedFriendId();
     isLoadingMoreAirbudsTracks_ = true;
-    std::thread([this, trackTableViewDataSource, playlistId]() {
+    std::thread([this, trackTableViewDataSource, playlistId, friendId]() {
         // Make sure the Airbuds client is still valid
         if (!AirbudsSearch::airbudsClient) {
             isLoadingMoreAirbudsTracks_ = false;
@@ -1439,11 +1491,18 @@ void MainViewController::reloadAirbudsTrackListView() {
         // Load tracks
         std::vector<airbuds::PlaylistTrack> tracks;
         try {
-            tracks = airbudsClient->getPlaylistTracks(playlistId);
+            if (friendId) {
+                tracks = airbudsClient->getPlaylistTracksForUser(*friendId, playlistId);
+            } else {
+                tracks = airbudsClient->getPlaylistTracks(playlistId);
+            }
         } catch (const std::exception& exception) {
             const std::string message = exception.what();
             AirbudsSearch::Log.error("Failed loading tracks: {}", message);
-            BSML::MainThreadScheduler::Schedule([this, message, trackTableViewDataSource]() {
+            BSML::MainThreadScheduler::Schedule([this, message, trackTableViewDataSource, friendId]() {
+                if (!historyContextMatches(friendId)) {
+                    return;
+                }
                 if (trackTableViewDataSource && trackTableViewDataSource->trackCount() > 0) {
                     airbudsTrackListLoadingIndicatorContainer_->get_gameObject()->set_active(false);
                     airbudsListViewErrorContainer_->get_gameObject()->set_active(false);
@@ -1459,7 +1518,7 @@ void MainViewController::reloadAirbudsTrackListView() {
             isLoadingMoreAirbudsTracks_ = false;
             return;
         }
-        BSML::MainThreadScheduler::Schedule([this, trackTableViewDataSource, tracks, playlistId]() {
+        BSML::MainThreadScheduler::Schedule([this, trackTableViewDataSource, tracks, playlistId, friendId]() {
             // Check if we still have a playlist selected
             if (!selectedPlaylist_) {
                 AirbudsSearch::Log.warn("Ignoring track list update because the selected playlist is null!");
@@ -1470,6 +1529,12 @@ void MainViewController::reloadAirbudsTrackListView() {
             // Check if we still have the same playlist selected
             if (selectedPlaylist_->id != playlistId) {
                 AirbudsSearch::Log.warn("Ignoring track list update because the selected playlist has changed! (requested = {} / current = {})", playlistId, selectedPlaylist_->id);
+                isLoadingMoreAirbudsTracks_ = false;
+                return;
+            }
+
+            if (!historyContextMatches(friendId)) {
+                AirbudsSearch::Log.warn("Ignoring track list update because the history user changed.");
                 isLoadingMoreAirbudsTracks_ = false;
                 return;
             }
@@ -1580,7 +1645,7 @@ void MainViewController::PostParse() {
         //airbudsPlaylistListView_->get_gameObject()->set_active(false);
     } else {
         // Set title
-        airbudsColumnTitleTextView_->set_text("Select History");
+        updateHistoryTitle();
 
         // Disable back button
         playlistsMenuButton_->get_gameObject()->set_active(false);
@@ -1621,11 +1686,7 @@ void MainViewController::onRandomTrackButtonClicked() {
 
     const bool useAllDays = randomAcrossAllDays_ || !selectedPlaylist_;
     if (useAllDays) {
-        if (!AirbudsSearch::airbudsClient) {
-            return;
-        }
-
-        std::vector<airbuds::PlaylistTrack> allTracks = AirbudsSearch::airbudsClient->getRecentlyPlayedCachedOnly();
+        std::vector<airbuds::PlaylistTrack> allTracks = getRecentlyPlayedCachedOnlyForCurrentUser();
         if (allTracks.empty()) {
             return;
         }
@@ -1717,6 +1778,54 @@ void MainViewController::setFilter(const CustomSongFilter& customSongFilter) {
     }
 }
 
+void MainViewController::setHistoryFriend(const std::optional<airbuds::Friend>& friendUser) {
+    if (friendUser && selectedFriend_ && friendUser->id == selectedFriend_->id) {
+        return;
+    }
+    if (!friendUser && !selectedFriend_) {
+        return;
+    }
+
+    selectedFriend_ = friendUser;
+    selectedPlaylist_.reset();
+    selectedTrack_.reset();
+    pendingRandomTrack_.reset();
+
+    if (airbudsPlaylistListView_) {
+        airbudsPlaylistListView_->tableView->ClearSelection();
+    }
+    if (airbudsTrackListView_) {
+        airbudsTrackListView_->tableView->ClearSelection();
+    }
+
+    auto* trackTableViewDataSource = gameObject->GetComponent<AirbudsTrackTableViewDataSource*>();
+    if (trackTableViewDataSource && airbudsTrackListView_) {
+        trackTableViewDataSource->clearTracks();
+        airbudsTrackListView_->tableView->ReloadData();
+    }
+
+    auto* playlistTableViewDataSource = gameObject->GetComponent<AirbudsPlaylistTableViewDataSource*>();
+    if (playlistTableViewDataSource && airbudsPlaylistListView_) {
+        playlistTableViewDataSource->playlists_.clear();
+        airbudsPlaylistListView_->tableView->ReloadData();
+    }
+
+    // Hide the search results
+    searchResultsList_->get_gameObject()->set_active(false);
+    searchResultsListLoadingIndicatorContainer_->get_gameObject()->set_active(false);
+    searchResultsListViewErrorContainer_->get_gameObject()->set_active(false);
+
+    setSelectedSongUi(nullptr);
+
+    showAllByArtistButton_->get_gameObject()->set_active(false);
+    hideDownloadedMapsButton_->get_gameObject()->set_active(false);
+
+    updateHistoryTitle();
+    playlistsMenuButton_->get_gameObject()->set_active(false);
+
+    reloadAirbudsPlaylistListView();
+}
+
 void MainViewController::ctor() {
     previewSong_ = nullptr;
     selectedPlaylist_ = nullptr;
@@ -1729,6 +1838,7 @@ void MainViewController::ctor() {
     customSongFilter_.includeDownloadedSongs_ = true;
     randomAcrossAllDays_ = false;
     pendingRandomTrack_.reset();
+    selectedFriend_.reset();
     currentSongFilter_ = AirbudsSearch::Filter::DEFAULT_SONG_FILTER_FUNCTION;
     currentSongScore_ = AirbudsSearch::Filter::DEFAULT_SONG_SCORE_FUNCTION;
     AirbudsSearch::Log.info("MainViewController::ctor() called, isShowingDownloadedMaps_={}, customSongFilter_.includeDownloadedSongs_={}", isShowingDownloadedMaps_.load(), customSongFilter_.includeDownloadedSongs_);
@@ -1797,8 +1907,9 @@ void MainViewController::reloadAirbudsPlaylistListView() {
 
     showAirbudsTrackLoadingIndicator();
     auto* playlistTableViewDataSource = gameObject->GetComponent<AirbudsPlaylistTableViewDataSource*>();
+    const std::optional<std::string> friendId = getSelectedFriendId();
     isLoadingMoreAirbudsPlaylists_ = true;
-    std::thread([this, playlistTableViewDataSource]() {
+    std::thread([this, playlistTableViewDataSource, friendId]() {
         // Make sure the Airbuds client is still valid
         if (!AirbudsSearch::airbudsClient) {
             isLoadingMoreAirbudsPlaylists_ = false;
@@ -1810,15 +1921,26 @@ void MainViewController::reloadAirbudsPlaylistListView() {
         std::vector<airbuds::Playlist> playlists;
         std::string statusMessage;
         try {
-            playlists = airbudsClient->getPlaylists();
+            if (friendId) {
+                playlists = airbudsClient->getPlaylistsForUser(*friendId);
+            } else {
+                playlists = airbudsClient->getPlaylists();
+            }
         } catch (const std::exception& exception) {
             AirbudsSearch::Log.error("Failed loading playlists: {}", exception.what());
-            playlists = airbudsClient->getPlaylistsCachedOnly();
+            if (friendId) {
+                playlists = airbudsClient->getPlaylistsCachedOnlyForUser(*friendId);
+            } else {
+                playlists = airbudsClient->getPlaylistsCachedOnly();
+            }
             if (!playlists.empty()) {
                 statusMessage = "Refresh failed; showing cached history.";
             } else {
                 isLoadingMoreAirbudsPlaylists_ = false;
-                BSML::MainThreadScheduler::Schedule([this]() {
+                BSML::MainThreadScheduler::Schedule([this, friendId]() {
+                    if (!historyContextMatches(friendId)) {
+                        return;
+                    }
                     onAirbudsTrackLoadingError("Loading Error");
                 });
                 return;
@@ -1826,7 +1948,11 @@ void MainViewController::reloadAirbudsPlaylistListView() {
         }
 
         if (playlists.empty()) {
-            playlists = airbudsClient->getPlaylistsCachedOnly();
+            if (friendId) {
+                playlists = airbudsClient->getPlaylistsCachedOnlyForUser(*friendId);
+            } else {
+                playlists = airbudsClient->getPlaylistsCachedOnly();
+            }
             if (!playlists.empty()) {
                 statusMessage = "Showing cached history.";
             }
@@ -1839,7 +1965,12 @@ void MainViewController::reloadAirbudsPlaylistListView() {
             }
         }
 
-        BSML::MainThreadScheduler::Schedule([this, playlistTableViewDataSource, playlists, statusMessage]() {
+        BSML::MainThreadScheduler::Schedule([this, playlistTableViewDataSource, playlists, statusMessage, friendId]() {
+            if (!historyContextMatches(friendId)) {
+                AirbudsSearch::Log.warn("Ignoring playlist update because the history user changed.");
+                isLoadingMoreAirbudsPlaylists_ = false;
+                return;
+            }
             showAirbudsPlaylistListView();
             playlistTableViewDataSource->playlists_.clear();
             playlistTableViewDataSource->playlists_.insert(
@@ -1878,7 +2009,7 @@ void MainViewController::onPlaylistsMenuButtonClicked() {
     airbudsTrackListView_->get_gameObject()->set_active(false);
 
     // Set title
-    airbudsColumnTitleTextView_->set_text("Select History");
+    updateHistoryTitle();
 
     // Disable button
     playlistsMenuButton_->get_gameObject()->set_active(false);

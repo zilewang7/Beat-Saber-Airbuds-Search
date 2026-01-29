@@ -48,6 +48,13 @@ DECLARE_CLASS_CODEGEN_INTERFACES(AirbudsSearch::UI::ViewControllers, SettingsVie
     DECLARE_INSTANCE_FIELD(UnityW<UnityEngine::UI::Button>, clearHistoryButton_);
     DECLARE_INSTANCE_METHOD(void, onClearHistoryButtonClicked);
 
+    // Friend History Cache
+    DECLARE_INSTANCE_FIELD(UnityW<TMPro::TextMeshProUGUI>, friendHistoryCacheSizeTextView_);
+    DECLARE_INSTANCE_FIELD(ListW<StringW>, friendHistoryClearRangeOptions_);
+    DECLARE_INSTANCE_FIELD(StringW, friendHistoryClearRangeValue_);
+    DECLARE_INSTANCE_FIELD(UnityW<UnityEngine::UI::Button>, clearFriendHistoryButton_);
+    DECLARE_INSTANCE_METHOD(void, onClearFriendHistoryButtonClicked);
+
     // Modal
     DECLARE_INSTANCE_FIELD(UnityW<ModalView>, modalView_);
 
@@ -56,15 +63,19 @@ DECLARE_CLASS_CODEGEN_INTERFACES(AirbudsSearch::UI::ViewControllers, SettingsVie
     void refreshKakasiStatus();
     void refreshCacheSizeStatus();
     void refreshHistoryCacheSizeStatus();
+    void refreshFriendHistoryCacheSizeStatus();
 
     void refresh();
 
     void clearHistoryOlderThan(std::chrono::hours age);
     void clearAllHistory();
+    void clearFriendHistoryOlderThan(std::chrono::hours age);
+    void clearAllFriendHistory();
 
     uintmax_t getDirectorySizeInBytes(const std::filesystem::path& path);
     std::string getHumanReadableSize(uintmax_t bytes);
 
     std::atomic_bool isClearingCache_;
     std::atomic_bool isClearingHistory_;
+    std::atomic_bool isClearingFriendHistory_;
 };

@@ -45,6 +45,8 @@ std::string trimAscii(const std::string& text) {
     return text.substr(start, end - start + 1);
 }
 
+constexpr std::string_view FRIEND_HISTORY_CACHE_DIR = "friend_recently_played";
+
 }
 
 void SettingsViewController::DidActivate(const bool isFirstActivation, bool addedToHierarchy, bool screenSystemDisabling) {
@@ -57,10 +59,18 @@ void SettingsViewController::DidActivate(const bool isFirstActivation, bool adde
         historyClearRangeOptions_->Add("All entries");
         historyClearRangeValue_ = "Older than 1 week";
 
+        friendHistoryClearRangeOptions_ = ListW<StringW>::New();
+        friendHistoryClearRangeOptions_->Add("Older than 1 day");
+        friendHistoryClearRangeOptions_->Add("Older than 1 week");
+        friendHistoryClearRangeOptions_->Add("Older than 1 month");
+        friendHistoryClearRangeOptions_->Add("All entries");
+        friendHistoryClearRangeValue_ = "Older than 1 week";
+
         BSML::parse_and_construct(IncludedAssets::SettingsViewController_bsml, this->get_transform(), this);
 
         isClearingCache_ = false;
         isClearingHistory_ = false;
+        isClearingFriendHistory_ = false;
 
 #if HOT_RELOAD
         fileWatcher->filePath = "/sdcard/SettingsViewController.bsml";
@@ -92,6 +102,7 @@ void SettingsViewController::refresh() {
     refreshKakasiStatus();
     refreshCacheSizeStatus();
     refreshHistoryCacheSizeStatus();
+    refreshFriendHistoryCacheSizeStatus();
 }
 
 void SettingsViewController::refreshAirbudsTokenStatus() {
@@ -257,6 +268,42 @@ void SettingsViewController::refreshHistoryCacheSizeStatus() {
     }).detach();
 }
 
+void SettingsViewController::refreshFriendHistoryCacheSizeStatus() {
+    friendHistoryCacheSizeTextView_->set_text("(Calculating...)");
+    std::thread([this]() {
+        const std::filesystem::path cacheDir = AirbudsSearch::getDataDirectory() / std::string(FRIEND_HISTORY_CACHE_DIR);
+        uintmax_t sizeInBytes = 0;
+        size_t entryCount = 0;
+
+        if (std::filesystem::exists(cacheDir)) {
+            for (const std::filesystem::directory_entry& entry : std::filesystem::directory_iterator(cacheDir)) {
+                if (!entry.is_regular_file()) {
+                    continue;
+                }
+                sizeInBytes += std::filesystem::file_size(entry.path());
+
+                std::ifstream file(entry.path(), std::ios::binary);
+                if (!file.is_open()) {
+                    continue;
+                }
+                std::string data((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
+                rapidjson::Document doc;
+                doc.Parse(data.c_str());
+                if (doc.IsObject() && doc.HasMember("tracks") && doc["tracks"].IsArray()) {
+                    entryCount += doc["tracks"].GetArray().Size();
+                }
+            }
+        }
+
+        BSML::MainThreadScheduler::Schedule([this, sizeInBytes, entryCount]() {
+            friendHistoryCacheSizeTextView_->set_text(std::format("({} entries, {})", entryCount, getHumanReadableSize(sizeInBytes)));
+
+            const bool clearing = isClearingFriendHistory_.load();
+            clearFriendHistoryButton_->set_interactable(!clearing);
+        });
+    }).detach();
+}
+
 void SettingsViewController::onClearHistoryButtonClicked() {
     const std::string selectedRange = historyClearRangeValue_;
     if (selectedRange == "Older than 1 day") {
@@ -267,6 +314,19 @@ void SettingsViewController::onClearHistoryButtonClicked() {
         clearHistoryOlderThan(std::chrono::hours(30 * 24));
     } else if (selectedRange == "All entries") {
         clearAllHistory();
+    }
+}
+
+void SettingsViewController::onClearFriendHistoryButtonClicked() {
+    const std::string selectedRange = friendHistoryClearRangeValue_;
+    if (selectedRange == "Older than 1 day") {
+        clearFriendHistoryOlderThan(std::chrono::hours(1 * 24));
+    } else if (selectedRange == "Older than 1 week") {
+        clearFriendHistoryOlderThan(std::chrono::hours(7 * 24));
+    } else if (selectedRange == "Older than 1 month") {
+        clearFriendHistoryOlderThan(std::chrono::hours(30 * 24));
+    } else if (selectedRange == "All entries") {
+        clearAllFriendHistory();
     }
 }
 
@@ -369,6 +429,112 @@ void SettingsViewController::clearAllHistory() {
         isClearingHistory_ = false;
         BSML::MainThreadScheduler::Schedule([this]() {
             refreshHistoryCacheSizeStatus();
+        });
+    }).detach();
+}
+
+void SettingsViewController::clearFriendHistoryOlderThan(std::chrono::hours age) {
+    if (isClearingFriendHistory_) {
+        return;
+    }
+    isClearingFriendHistory_ = true;
+    friendHistoryCacheSizeTextView_->set_text("(Clearing...)");
+    clearFriendHistoryButton_->set_interactable(false);
+
+    std::thread([this, age]() {
+        const std::filesystem::path cacheDir = AirbudsSearch::getDataDirectory() / std::string(FRIEND_HISTORY_CACHE_DIR);
+
+        if (!std::filesystem::exists(cacheDir)) {
+            isClearingFriendHistory_ = false;
+            BSML::MainThreadScheduler::Schedule([this]() {
+                refreshFriendHistoryCacheSizeStatus();
+            });
+            return;
+        }
+
+        const auto now = std::chrono::system_clock::now();
+        const auto cutoffTime = std::chrono::duration_cast<std::chrono::milliseconds>(
+            (now - age).time_since_epoch()
+        );
+
+        for (const std::filesystem::directory_entry& entry : std::filesystem::directory_iterator(cacheDir)) {
+            if (!entry.is_regular_file()) {
+                continue;
+            }
+
+            std::ifstream inFile(entry.path(), std::ios::binary);
+            if (!inFile.is_open()) {
+                continue;
+            }
+
+            std::string data((std::istreambuf_iterator<char>(inFile)), std::istreambuf_iterator<char>());
+            inFile.close();
+
+            rapidjson::Document doc;
+            doc.Parse(data.c_str());
+
+            if (!doc.IsObject() || !doc.HasMember("tracks") || !doc["tracks"].IsArray()) {
+                continue;
+            }
+
+            rapidjson::Value newTracks(rapidjson::kArrayType);
+            auto& allocator = doc.GetAllocator();
+
+            for (const auto& track : doc["tracks"].GetArray()) {
+                if (!track.IsObject()) {
+                    continue;
+                }
+                int64_t playedAtMs = 0;
+                if (track.HasMember("playedAtMs") && track["playedAtMs"].IsInt64()) {
+                    playedAtMs = track["playedAtMs"].GetInt64();
+                }
+                if (playedAtMs >= cutoffTime.count()) {
+                    rapidjson::Value trackCopy;
+                    trackCopy.CopyFrom(track, allocator);
+                    newTracks.PushBack(trackCopy, allocator);
+                }
+            }
+
+            if (newTracks.Empty()) {
+                std::filesystem::remove(entry.path());
+                continue;
+            }
+
+            doc["tracks"] = newTracks;
+
+            rapidjson::StringBuffer buffer;
+            rapidjson::Writer<rapidjson::StringBuffer> writer(buffer);
+            doc.Accept(writer);
+
+            std::ofstream outFile(entry.path(), std::ios::binary | std::ios::trunc);
+            if (outFile.is_open()) {
+                outFile.write(buffer.GetString(), buffer.GetSize());
+            }
+        }
+
+        isClearingFriendHistory_ = false;
+        BSML::MainThreadScheduler::Schedule([this]() {
+            refreshFriendHistoryCacheSizeStatus();
+        });
+    }).detach();
+}
+
+void SettingsViewController::clearAllFriendHistory() {
+    if (isClearingFriendHistory_) {
+        return;
+    }
+    isClearingFriendHistory_ = true;
+    friendHistoryCacheSizeTextView_->set_text("(Clearing...)");
+    clearFriendHistoryButton_->set_interactable(false);
+
+    std::thread([this]() {
+        const std::filesystem::path cacheDir = AirbudsSearch::getDataDirectory() / std::string(FRIEND_HISTORY_CACHE_DIR);
+        if (std::filesystem::exists(cacheDir)) {
+            std::filesystem::remove_all(cacheDir);
+        }
+        isClearingFriendHistory_ = false;
+        BSML::MainThreadScheduler::Schedule([this]() {
+            refreshFriendHistoryCacheSizeStatus();
         });
     }).detach();
 }

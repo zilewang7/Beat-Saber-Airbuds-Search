@@ -31,7 +31,7 @@
         <!-- Image Cache -->
         <horizontal spacing="4" pad-right="4" pref-height="8">
             <text text="Image Cache"/>
-            <text id="cacheSizeTextView_" color="magenta" font-size="3.5"/>
+            <text id="cacheSizeTextView_" color="magenta" font-size="2.8"/>
             <horizontal flex-width="100"/>
             <button id="clearCacheButton_" text="Clear" on-click="onClearCacheButtonClicked" pref-width="20"/>
         </horizontal>
@@ -39,9 +39,17 @@
         <!-- History Cache -->
         <horizontal spacing="2" pad-right="4" pref-height="8">
             <text text="History Cache" pref-width="22"/>
-            <text id="historyCacheSizeTextView_" color="magenta" font-size="3.5"/>
-            <dropdown-list-setting id="historyClearRangeDropdown_" text="" options="historyClearRangeOptions_" value="historyClearRangeValue_" pref-width="38" apply-on-change="true"/>
-            <button id="clearHistoryButton_" text="Clear" on-click="onClearHistoryButtonClicked" pref-width="20"/>
+            <text id="historyCacheSizeTextView_" color="magenta" font-size="2.8" overflow-mode="Ellipsis" word-wrapping="false" pref-width="24"/>
+            <dropdown-list-setting id="historyClearRangeDropdown_" text="" options="historyClearRangeOptions_" value="historyClearRangeValue_" pref-width="28" apply-on-change="true"/>
+            <button id="clearHistoryButton_" text="Clear" on-click="onClearHistoryButtonClicked" pref-width="16"/>
+        </horizontal>
+
+        <!-- Friend History Cache -->
+        <horizontal spacing="2" pad-right="4" pref-height="8">
+            <text text="Friend Cache" pref-width="22"/>
+            <text id="friendHistoryCacheSizeTextView_" color="magenta" font-size="2.8" overflow-mode="Ellipsis" word-wrapping="false" pref-width="24"/>
+            <dropdown-list-setting id="friendHistoryClearRangeDropdown_" text="" options="friendHistoryClearRangeOptions_" value="friendHistoryClearRangeValue_" pref-width="28" apply-on-change="true"/>
+            <button id="clearFriendHistoryButton_" text="Clear" on-click="onClearFriendHistoryButtonClicked" pref-width="16"/>
         </horizontal>
     </vertical>
 

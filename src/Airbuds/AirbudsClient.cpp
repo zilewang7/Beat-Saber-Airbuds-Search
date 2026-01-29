@@ -24,12 +24,15 @@ namespace {
 
 constexpr std::string_view AIRBUDS_RECENTLY_PLAYED_QUERY =
     "query UserRecentlyPlayed($id: ID!, $limit: Int!, $cursor: Cursor) { userWithID(id: $id) { __typename ...UserFields recentlyPlayed(limit: $limit, cursor: $cursor, query: { maxVisibility: PRIVATE } ) { __typename items { __typename id playedAtMax playCount object { __typename ...MusicObjectFields } highlight { __typename at } userMusicStatus { __typename ...UserMusicStatusFields } feedActivity { __typename id activityUrl } visibility } pageInfo { __typename hasNextPage endCursor } } id } }  fragment UserFields on User { __typename id identifier profileURL displayName imageUrl }  fragment MusicObjectFields on MusicObject { __typename id kind openable { __typename id provider artworkURL artists { __typename id artworkURL } name artistName audioPreviewURL uri } }  fragment UserMusicStatusFields on UserMusicStatus { __typename emoji text }";
+constexpr std::string_view AIRBUDS_FRIEND_LIST_QUERY =
+    "query FriendList { me { __typename id friends(limit: 1000) { __typename items { __typename ...UserFriendshipFields id } } } }  fragment UserFields on User { __typename id identifier profileURL displayName imageUrl }  fragment UserFriendshipFields on UserFriendship { __typename id withUserId status createdAt acceptedAt ignoredAt hasBffedAt isBffedAt withUser { __typename ...UserFields id } }";
 constexpr std::string_view AIRBUDS_ACCEPT_HEADER =
     "multipart/mixed;deferSpec=20220824, application/graphql-response+json, application/json";
 constexpr std::string_view AIRBUDS_USER_AGENT = "Poplive/163 Android/16";
 constexpr std::string_view AIRBUDS_GRAPHQL_ENDPOINT = "https://graph-ilsfyhvrya-uc.a.run.app/query";
 constexpr std::string_view AIRBUDS_REFRESH_ENDPOINT = "https://accounts-ilsfyhvrya-uc.a.run.app/refresh";
 constexpr std::string_view AIRBUDS_REFRESH_CONTENT_TYPE = "application/json; charset=utf-8";
+constexpr std::string_view FRIEND_HISTORY_CACHE_DIR = "friend_recently_played";
 
 struct AccumulatingStringResponse : public WebUtils::GenericResponse<std::string> {
     size_t totalBytes = 0;
@@ -259,6 +262,36 @@ std::filesystem::path getRecentlyPlayedCachePath() {
     return AirbudsSearch::getDataDirectory() / "recently_played_cache.json";
 }
 
+std::string sanitizeCacheKey(std::string_view value) {
+    std::string output;
+    output.reserve(value.size());
+    for (const char c : value) {
+        const unsigned char uc = static_cast<unsigned char>(c);
+        if ((uc >= 'a' && uc <= 'z') || (uc >= 'A' && uc <= 'Z') || (uc >= '0' && uc <= '9') || uc == '-' || uc == '_') {
+            output.push_back(static_cast<char>(uc));
+        } else {
+            output.push_back('_');
+        }
+    }
+    return output;
+}
+
+std::filesystem::path getFriendRecentlyPlayedCacheDirectory() {
+    const std::filesystem::path path = AirbudsSearch::getDataDirectory() / std::string(FRIEND_HISTORY_CACHE_DIR);
+    if (!std::filesystem::exists(path)) {
+        std::filesystem::create_directories(path);
+    }
+    return path;
+}
+
+std::filesystem::path getFriendRecentlyPlayedCachePath(std::string_view friendId) {
+    std::string safeId = sanitizeCacheKey(friendId);
+    if (safeId.empty()) {
+        safeId = "unknown";
+    }
+    return getFriendRecentlyPlayedCacheDirectory() / std::format("recently_played_{}.json", safeId);
+}
+
 std::string makeRecentlyPlayedKey(const airbuds::PlaylistTrack& track) {
     const long long millis = track.dateAdded_.count();
     if (millis > 0) {
@@ -267,9 +300,8 @@ std::string makeRecentlyPlayedKey(const airbuds::PlaylistTrack& track) {
     return track.id + "|" + track.dateAdded;
 }
 
-RecentlyPlayedCache loadRecentlyPlayedCache() {
+RecentlyPlayedCache loadRecentlyPlayedCache(const std::filesystem::path& path) {
     RecentlyPlayedCache cache;
-    const std::filesystem::path path = getRecentlyPlayedCachePath();
     if (!std::filesystem::exists(path)) {
         return cache;
     }
@@ -360,8 +392,11 @@ RecentlyPlayedCache loadRecentlyPlayedCache() {
     return cache;
 }
 
-void saveRecentlyPlayedCache(const std::vector<airbuds::PlaylistTrack>& tracks) {
-    const std::filesystem::path path = getRecentlyPlayedCachePath();
+RecentlyPlayedCache loadRecentlyPlayedCache() {
+    return loadRecentlyPlayedCache(getRecentlyPlayedCachePath());
+}
+
+void saveRecentlyPlayedCache(const std::filesystem::path& path, const std::vector<airbuds::PlaylistTrack>& tracks) {
 
     rapidjson::Document document;
     document.SetObject();
@@ -409,6 +444,10 @@ void saveRecentlyPlayedCache(const std::vector<airbuds::PlaylistTrack>& tracks) 
         return;
     }
     file.write(buffer.GetString(), static_cast<std::streamsize>(buffer.GetSize()));
+}
+
+void saveRecentlyPlayedCache(const std::vector<airbuds::PlaylistTrack>& tracks) {
+    saveRecentlyPlayedCache(getRecentlyPlayedCachePath(), tracks);
 }
 
 std::string getOptionalString(const rapidjson::Value& json, const char* key) {
@@ -743,6 +782,78 @@ void airbuds::Client::resetAirbudsCredentials() {
     airbudsUserId_.clear();
     airbudsAccessTokenExpiry_.reset();
     lastRecentlyPlayedWarning_.clear();
+    cachedFriendRecentlyPlayedTracks_.clear();
+}
+
+std::vector<Friend> Client::getFriends() {
+    std::vector<Friend> friends;
+    const auto credentials = getAirbudsCredentials();
+    if (!credentials) {
+        throw std::runtime_error("Airbuds refresh token is missing.");
+    }
+
+    const rapidjson::Document document = apiGetFriends(*credentials);
+    if (!document.HasMember("data") || !document["data"].IsObject()) {
+        throw std::runtime_error("Airbuds API response missing data.");
+    }
+    const auto& data = document["data"];
+    if (!data.HasMember("me") || !data["me"].IsObject()) {
+        throw std::runtime_error("Airbuds API response missing user.");
+    }
+    const auto& me = data["me"];
+    if (!me.HasMember("friends") || !me["friends"].IsObject()) {
+        throw std::runtime_error("Airbuds API response missing friends.");
+    }
+    const auto& friendsJson = me["friends"];
+    if (!friendsJson.HasMember("items") || !friendsJson["items"].IsArray()) {
+        throw std::runtime_error("Airbuds API response missing friends items.");
+    }
+
+    std::unordered_set<std::string> seen;
+    const auto& items = friendsJson["items"].GetArray();
+    for (const auto& item : items) {
+        if (!item.IsObject()) {
+            continue;
+        }
+        const std::string status = getOptionalString(item, "status");
+        if (status != "ACKNOWLEDGED") {
+            continue;
+        }
+
+        std::string friendId = getOptionalString(item, "withUserId");
+        const rapidjson::Value* withUser = nullptr;
+        if (item.HasMember("withUser") && item["withUser"].IsObject()) {
+            withUser = &item["withUser"];
+        }
+        if (friendId.empty() && withUser) {
+            friendId = getOptionalString(*withUser, "id");
+        }
+        if (friendId.empty()) {
+            continue;
+        }
+
+        if (!seen.insert(friendId).second) {
+            continue;
+        }
+
+        Friend friendUser;
+        friendUser.id = friendId;
+        if (withUser) {
+            friendUser.identifier = getOptionalString(*withUser, "identifier");
+            friendUser.displayName = getOptionalString(*withUser, "displayName");
+        }
+        friends.push_back(std::move(friendUser));
+    }
+
+    if (!friends.empty()) {
+        std::sort(friends.begin(), friends.end(), [](const Friend& left, const Friend& right) {
+            const std::string leftName = left.displayName.empty() ? left.identifier : left.displayName;
+            const std::string rightName = right.displayName.empty() ? right.identifier : right.displayName;
+            return AirbudsSearch::Utils::toLowerCase(leftName) < AirbudsSearch::Utils::toLowerCase(rightName);
+        });
+    }
+
+    return friends;
 }
 
 std::vector<PlaylistTrack> Client::getRecentlyPlayed() {
@@ -758,8 +869,60 @@ std::vector<PlaylistTrack> Client::getRecentlyPlayedCachedOnly() {
     return cachedRecentlyPlayedTracks_;
 }
 
+std::vector<PlaylistTrack> Client::getRecentlyPlayedForUser(const std::string& userId) {
+    if (userId.empty()) {
+        return getRecentlyPlayedTracks();
+    }
+    const std::filesystem::path cachePath = getFriendRecentlyPlayedCachePath(userId);
+    return getRecentlyPlayedTracksForUser(userId, &cachedFriendRecentlyPlayedTracks_[userId], cachePath);
+}
+
+std::vector<PlaylistTrack> Client::getRecentlyPlayedCachedOnlyForUser(const std::string& userId) {
+    if (userId.empty()) {
+        return getRecentlyPlayedCachedOnly();
+    }
+    auto existing = cachedFriendRecentlyPlayedTracks_.find(userId);
+    if (existing != cachedFriendRecentlyPlayedTracks_.end() && !existing->second.empty()) {
+        return existing->second;
+    }
+    RecentlyPlayedCache cache = loadRecentlyPlayedCache(getFriendRecentlyPlayedCachePath(userId));
+    cachedFriendRecentlyPlayedTracks_[userId] = cache.tracks;
+    return cachedFriendRecentlyPlayedTracks_[userId];
+}
+
 std::vector<PlaylistTrack> Client::getPlaylistTracks(const std::string_view playlistId) {
     std::vector<PlaylistTrack> tracks = getRecentlyPlayedCachedOnly();
+    if (tracks.empty()) {
+        return tracks;
+    }
+
+    if (playlistId.empty() || playlistId == "airbuds-recent") {
+        return tracks;
+    }
+
+    std::vector<PlaylistTrack> filtered;
+    filtered.reserve(tracks.size());
+    for (const auto& track : tracks) {
+        std::string key;
+        if (!getLocalDateKey(track.dateAdded_, key)) {
+            if (playlistId == "unknown") {
+                filtered.push_back(track);
+            }
+            continue;
+        }
+        if (key == playlistId) {
+            filtered.push_back(track);
+        }
+    }
+    return filtered;
+}
+
+std::vector<PlaylistTrack> Client::getPlaylistTracksForUser(std::string_view userId, std::string_view playlistId) {
+    if (userId.empty()) {
+        return getPlaylistTracks(playlistId);
+    }
+
+    std::vector<PlaylistTrack> tracks = getRecentlyPlayedCachedOnlyForUser(std::string(userId));
     if (tracks.empty()) {
         return tracks;
     }
@@ -808,7 +971,27 @@ std::vector<Playlist> Client::getPlaylistsCachedOnly() {
     return buildPlaylistsFromTracks(tracks);
 }
 
-rapidjson::Document Client::apiGetRecentlyPlayed(const AirbudsCredentials& credentials, const std::optional<std::string>& cursor, const size_t limit) {
+std::vector<Playlist> Client::getPlaylistsForUser(const std::string& userId) {
+    if (userId.empty()) {
+        return getPlaylists();
+    }
+    const std::vector<PlaylistTrack> tracks = getRecentlyPlayedForUser(userId);
+    return buildPlaylistsFromTracks(tracks);
+}
+
+std::vector<Playlist> Client::getPlaylistsCachedOnlyForUser(const std::string& userId) {
+    if (userId.empty()) {
+        return getPlaylistsCachedOnly();
+    }
+    const std::vector<PlaylistTrack> tracks = getRecentlyPlayedCachedOnlyForUser(userId);
+    return buildPlaylistsFromTracks(tracks);
+}
+
+rapidjson::Document Client::apiGetRecentlyPlayed(
+    const AirbudsCredentials& credentials,
+    const std::string& userId,
+    const std::optional<std::string>& cursor,
+    const size_t limit) {
     rapidjson::Document requestJson;
     requestJson.SetObject();
     rapidjson::Document::AllocatorType& allocator = requestJson.GetAllocator();
@@ -816,7 +999,7 @@ rapidjson::Document Client::apiGetRecentlyPlayed(const AirbudsCredentials& crede
     requestJson.AddMember("operationName", "UserRecentlyPlayed", allocator);
 
     rapidjson::Value variables(rapidjson::kObjectType);
-    variables.AddMember("id", rapidjson::Value(credentials.userId.c_str(), allocator), allocator);
+    variables.AddMember("id", rapidjson::Value(userId.c_str(), allocator), allocator);
     variables.AddMember("limit", static_cast<int>(limit), allocator);
     if (cursor && !cursor->empty()) {
         variables.AddMember("cursor", rapidjson::Value(cursor->c_str(), allocator), allocator);
@@ -856,9 +1039,59 @@ rapidjson::Document Client::apiGetRecentlyPlayed(const AirbudsCredentials& crede
     return result;
 }
 
+rapidjson::Document Client::apiGetFriends(const AirbudsCredentials& credentials) {
+    rapidjson::Document requestJson;
+    requestJson.SetObject();
+    rapidjson::Document::AllocatorType& allocator = requestJson.GetAllocator();
+
+    requestJson.AddMember("operationName", "FriendList", allocator);
+
+    rapidjson::Value variables(rapidjson::kObjectType);
+    requestJson.AddMember("variables", variables, allocator);
+
+    requestJson.AddMember("query", rapidjson::Value(AIRBUDS_FRIEND_LIST_QUERY.data(), allocator), allocator);
+
+    rapidjson::Value extensions(rapidjson::kObjectType);
+    rapidjson::Value clientLibrary(rapidjson::kObjectType);
+    clientLibrary.AddMember("name", "apollo-kotlin", allocator);
+    clientLibrary.AddMember("version", "4.3.3", allocator);
+    extensions.AddMember("clientLibrary", clientLibrary, allocator);
+    requestJson.AddMember("extensions", extensions, allocator);
+
+    rapidjson::StringBuffer buffer;
+    rapidjson::Writer<rapidjson::StringBuffer> writer(buffer);
+    requestJson.Accept(writer);
+
+    const std::string body = buffer.GetString();
+
+    const WebUtils::URLOptions::HeaderMap headers = {
+        {"Accept", std::string(AIRBUDS_ACCEPT_HEADER)},
+        {"Authorization", std::format("Bearer {}", credentials.accessToken)},
+        {"Content-Type", "application/json"},
+    };
+
+    const AccumulatingStringResponse response =
+        postJsonWithWebUtils(AIRBUDS_GRAPHQL_ENDPOINT, headers, body, AIRBUDS_USER_AGENT);
+    const rapidjson::Document document = parseJsonPayload(response, "airbuds-graphql-friends");
+    if (document.HasMember("errors")) {
+        throw std::runtime_error(std::format("Airbuds API error: {}", toString(document["errors"])));
+    }
+
+    rapidjson::Document result;
+    result.CopyFrom(document, result.GetAllocator());
+    return result;
+}
+
 std::vector<PlaylistTrack> Client::getRecentlyPlayedTracks() {
+    return getRecentlyPlayedTracksForUser("", &cachedRecentlyPlayedTracks_, getRecentlyPlayedCachePath());
+}
+
+std::vector<PlaylistTrack> Client::getRecentlyPlayedTracksForUser(
+    const std::string& userId,
+    std::vector<PlaylistTrack>* cachedTracks,
+    const std::filesystem::path& cachePath) {
     lastRecentlyPlayedWarning_.clear();
-    RecentlyPlayedCache cache = loadRecentlyPlayedCache();
+    RecentlyPlayedCache cache = loadRecentlyPlayedCache(cachePath);
     std::unordered_set<std::string> cachedKeys;
     if (!cache.tracks.empty()) {
         cachedKeys.reserve(cache.tracks.size() * 2);
@@ -871,10 +1104,20 @@ std::vector<PlaylistTrack> Client::getRecentlyPlayedTracks() {
     if (!credentials) {
         if (!cache.tracks.empty()) {
             lastRecentlyPlayedWarning_ = "Airbuds refresh token missing; showing cached history.";
-            cachedRecentlyPlayedTracks_ = cache.tracks;
+            if (cachedTracks) {
+                *cachedTracks = cache.tracks;
+            }
             return cache.tracks;
         }
         throw std::runtime_error("Airbuds refresh token is missing.");
+    }
+
+    std::string targetUserId = userId;
+    if (targetUserId.empty()) {
+        targetUserId = credentials->userId;
+    }
+    if (targetUserId.empty()) {
+        throw std::runtime_error("Airbuds API userId is missing.");
     }
 
     std::vector<PlaylistTrack> newTracks;
@@ -887,7 +1130,7 @@ std::vector<PlaylistTrack> Client::getRecentlyPlayedTracks() {
 
     try {
         while (hasNextPage) {
-            const rapidjson::Document document = apiGetRecentlyPlayed(*credentials, cursor, AIRBUDS_PAGE_LIMIT);
+            const rapidjson::Document document = apiGetRecentlyPlayed(*credentials, targetUserId, cursor, AIRBUDS_PAGE_LIMIT);
             if (!document.HasMember("data") || !document["data"].IsObject()) {
                 throw std::runtime_error("Airbuds API response missing data.");
             }
@@ -973,7 +1216,9 @@ std::vector<PlaylistTrack> Client::getRecentlyPlayedTracks() {
         if (!cache.tracks.empty()) {
             AirbudsSearch::Log.warn("Recently played refresh failed: {}", exception.what());
             lastRecentlyPlayedWarning_ = "Refresh failed; showing cached history.";
-            cachedRecentlyPlayedTracks_ = cache.tracks;
+            if (cachedTracks) {
+                *cachedTracks = cache.tracks;
+            }
             return cache.tracks;
         }
         throw;
@@ -1011,8 +1256,10 @@ std::vector<PlaylistTrack> Client::getRecentlyPlayedTracks() {
         });
     }
 
-    saveRecentlyPlayedCache(merged);
-    cachedRecentlyPlayedTracks_ = merged;
+    saveRecentlyPlayedCache(cachePath, merged);
+    if (cachedTracks) {
+        *cachedTracks = merged;
+    }
     return merged;
 }
 
